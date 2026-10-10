@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1600px; }
+  body {
+    font-family: "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+    background:#FFFFFF; color:#1A1B1C; padding:32px 36px 26px;
+  }
+  .header { margin-bottom:18px; }
+  .header h1 { font-size:30px; font-weight:700; letter-spacing:1px; }
+  .header p { font-size:15px; color:#5F6670; margin-top:8px; }
+
+  .canvas { position:relative; width:1528px; height:630px; border:1px solid #E4E3DD; border-radius:8px; background:#FFFFFF; }
+  .lane {
+    position:absolute; left:0; right:0; height:105px; border-bottom:1px solid #E4E3DD;
+    display:flex; align-items:center;
+  }
+  .lane:nth-child(even) { background:#F7F7F5; }
+  .lane-label { width:84px; flex-shrink:0; font-size:13px; font-weight:700; color:#5F6670; text-align:center; line-height:1.4; padding-right:8px; }
+  .lane-body { flex:1; position:relative; height:100%; }
+
+  .node {
+    position:absolute; width:116px; height:60px; border-radius:7px; background:#FFFFFF;
+    border:1.5px solid #4F6B9A; padding:7px 8px; text-align:center; z-index:2;
+  }
+  .node .n { font-size:11px; font-weight:700; color:#4F6B9A; }
+  .node .t { font-size:12px; font-weight:700; margin-top:3px; line-height:1.3; }
+  .node.user { border-color:#4F6B9A; } .node.user .n { color:#4F6B9A; }
+  .node.api { border-color:#35705A; } .node.api .n { color:#35705A; }
+  .node.pg { border-color:#6B6258; } .node.pg .n { color:#6B6258; }
+  .node.kafka { border-color:#9A6A2F; } .node.kafka .n { color:#9A6A2F; }
+  .node.coord { border-color:#5B6B8C; } .node.coord .n { color:#5B6B8C; }
+  .node.ai { border-color:#2F6E78; } .node.ai .n { color:#2F6E78; }
+
+  svg.wires { position:absolute; inset:0; z-index:1; pointer-events:none; }
+
+  .gov { display:flex; gap:14px; margin-top:16px; }
+  .gov-card {
+    flex:1; border:1px solid #E4E3DD; border-radius:8px; padding:12px 15px; background:#FFFFFF;
+  }
+  .gov-card .t { font-size:14px; font-weight:700; }
+  .gov-card .d { font-size:12.5px; color:#5F6670; margin-top:6px; line-height:1.55; }
+  .g-retry { border-top:3px solid #9A6A2F; }
+  .g-rec { border-top:3px solid #35705A; }
+  .g-sse { border-top:3px solid #4F6B9A; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>核心规划链路与异步治理</h1>
+    <p>写操作先落 PostgreSQL 与 Outbox，经 Kafka 至少一次投递；事件先写库再广播 SSE，终态在 SSE 与轮询间保持一致。</p>
+  </div>
+
+  <div class="canvas">
+    <div class="lane" style="top:0;">
+      <div class="lane-label">用户 /<br>浏览器</div>
+      <div class="lane-body">
+        <div class="node user" style="left:84px; top:22px;"><div class="n">STEP 1</div><div class="t">创建旅行<br>上传订单</div></div>
+        <div class="node user" style="left:1364px; top:22px;"><div class="n">STEP 11</div><div class="t">SSE / 轮询<br>一致终态</div></div>
+      </div>
+    </div>
+    <div class="lane" style="top:105px;">
+      <div class="lane-label">Spring Boot<br>API</div>
+      <div class="lane-body">
+        <div class="node api" style="left:212px; top:22px;"><div class="n">STEP 2</div><div class="t">鉴权校验<br>幂等检查</div></div>
+        <div class="node api" style="left:1236px; top:22px;"><div class="n">STEP 10</div><div class="t">事件写 PG<br>SSE + Redis</div></div>
+      </div>
+    </div>
+    <div class="lane" style="top:210px;">
+      <div class="lane-label">PostgreSQL<br>权威源</div>
+      <div class="lane-body">
+        <div class="node pg" style="left:340px; top:22px;"><div class="n">STEP 3</div><div class="t">业务数据<br>+ Outbox</div></div>
+        <div class="node pg" style="left:1108px; top:22px;"><div class="n">STEP 9</div><div class="t">保存两个方案<br>不可变版本</div></div>
+      </div>
+    </div>
+    <div class="lane" style="top:315px;">
+      <div class="lane-label">Kafka<br>消息总线</div>
+      <div class="lane-body">
+        <div class="node kafka" style="left:468px; top:22px;"><div class="n">STEP 4</div><div class="t">发布版本化<br>命令</div></div>
+      </div>
+    </div>
+    <div class="lane" style="top:420px;">
+      <div class="lane-label">Coordinator<br>/ Agents</div>
+      <div class="lane-body">
+        <div class="node coord" style="left:596px; top:22px;"><div class="n">STEP 5</div><div class="t">消费命令<br>Inbox 去重</div></div>
+        <div class="node coord" style="left:852px; top:22px;"><div class="n">STEP 7</div><div class="t">并行委派<br>Agents</div></div>
+        <div class="node coord" style="left:980px; top:22px;"><div class="n">STEP 8</div><div class="t">规则引擎<br>冲突 / 预算</div></div>
+      </div>
+    </div>
+    <div class="lane" style="top:525px; border-bottom:none;">
+      <div class="lane-label">FastAPI<br>RAG / 外部</div>
+      <div class="lane-body">
+        <div class="node ai" style="left:724px; top:22px;"><div class="n">STEP 6</div><div class="t">知识 / 记忆<br>实时工具</div></div>
+      </div>
+    </div>
+
+    <svg class="wires" width="1528" height="630">
+      <defs>
+        <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+          <path d="M0,0 L8,4.5 L0,9 Z" fill="#5F6670"/>
+        </marker>
+      </defs>
+      <!-- lane-body offset = 84px -->
+      <path d="M284,55 H290 V160 H296" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M412,160 H418 V265 H424" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M540,265 H546 V370 H552" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M668,370 H674 V475 H680" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M796,475 H802 V580 H808" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M924,580 H930 V475 H936" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M1052,475 H1064" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M1180,475 H1186 V265 H1192" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M1308,265 H1314 V160 H1320" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+      <path d="M1436,160 H1442 V55 H1448" fill="none" stroke="#5F6670" stroke-width="1.8" marker-end="url(#arr)"/>
+    </svg>
+  </div>
+
+  <div class="gov">
+    <div class="gov-card g-retry">
+      <div class="t">有界重试与死信</div>
+      <div class="d">Kafka、模型、外部 HTTP 与 A2A 重试均有最大次数、超时与最大退避；耗尽后进入持久化死信，不存在无限重试。</div>
+    </div>
+    <div class="gov-card g-rec">
+      <div class="t">重启任务恢复</div>
+      <div class="d">重启只重派安全的排队或显式可重试阶段；不安全的运行中步骤失败为 TASK_RECOVERY_UNSAFE。</div>
+    </div>
+    <div class="gov-card g-sse">
+      <div class="t">SSE 断线回放</div>
+      <div class="d">任务事件先写 PostgreSQL 再广播并缓存 Redis；断线用 Last-Event-ID 回放，Redis 丢失不造成进度缺口。</div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1600px; }
+  body {
+    font-family: "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+    background:#FFFFFF; color:#1A1B1C; padding:32px 36px 28px;
+  }
+  .header { margin-bottom:20px; }
+  .header h1 { font-size:30px; font-weight:700; letter-spacing:1px; }
+  .header p { font-size:15px; color:#5F6670; margin-top:8px; }
+
+  .main { display:flex; gap:20px; }
+  .col-layers { flex:1; display:flex; flex-direction:column; }
+  .col-obs { width:236px; display:flex; flex-direction:column; }
+
+  .layer {
+    border:1px solid #E4E3DD; border-radius:8px; background:#FFFFFF;
+    padding:12px 16px 14px; position:relative;
+  }
+  .layer-title { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .layer-title .badge {
+    font-size:12px; color:#FFFFFF; border-radius:4px; padding:2px 8px; font-weight:700;
+  }
+  .layer-title .name { font-size:16px; font-weight:700; }
+  .layer-title .stack { font-size:12px; color:#5F6670; margin-left:auto; }
+
+  .cards { display:flex; gap:10px; flex-wrap:wrap; }
+  .card {
+    flex:1; min-width:0; border:1px solid #E4E3DD; border-radius:6px;
+    background:#F7F7F5; padding:9px 12px;
+  }
+  .card .t { font-size:14px; font-weight:700; margin-bottom:3px; }
+  .card .d { font-size:12px; color:#5F6670; line-height:1.45; }
+
+  .arrow { text-align:center; height:26px; position:relative; }
+  .arrow svg { display:block; margin:0 auto; }
+
+  /* layer accents */
+  .c-front { background:#4F6B9A; } .b-front { border-top:3px solid #4F6B9A; }
+  .c-auth { background:#9A6A2F; } .b-auth { border-top:3px solid #9A6A2F; }
+  .c-api { background:#35705A; } .b-api { border-top:3px solid #35705A; }
+  .c-agent { background:#5B6B8C; } .b-agent { border-top:3px solid #5B6B8C; }
+  .c-ai { background:#2F6E78; } .b-ai { border-top:3px solid #2F6E78; }
+  .c-ext { background:#9A6A2F; } .b-ext { border-top:3px solid #9A6A2F; }
+  .c-data { background:#6B6258; } .b-data { border-top:3px solid #6B6258; }
+  .c-obs { background:#A14E50; } .b-obs { border-top:3px solid #A14E50; }
+
+  .obs-panel {
+    flex:1; border:1px solid #E4E3DD; border-radius:8px; padding:12px 14px;
+    display:flex; flex-direction:column;
+  }
+  .obs-node {
+    border:1px solid #E4E3DD; border-radius:6px; background:#F7F7F5;
+    padding:10px 12px; margin-bottom:10px;
+  }
+  .obs-node .t { font-size:14px; font-weight:700; }
+  .obs-node .d { font-size:12px; color:#5F6670; margin-top:4px; line-height:1.45; }
+  .obs-down { text-align:center; color:#A14E50; font-size:18px; margin:2px 0 8px; }
+  .obs-cover {
+    font-size:12px; color:#5F6670; line-height:1.6; border-top:1px dashed #E4E3DD; padding-top:10px;
+  }
+  .legend {
+    margin-top:14px; font-size:12px; color:#5F6670; display:flex; gap:20px; align-items:center;
+  }
+  .legend .item { display:flex; align-items:center; gap:6px; }
+  .legend .sw { width:22px; height:0; border-top:2px solid #5F6670; }
+  .legend .sw.dash { border-top:2px dashed #A14E50; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>TripAgent Nexus 系统总体架构</h1>
+    <p>Contract First：浏览器请求只进入 Spring Boot 公共边界；语义理解与候选生成交给模型，金额、日期、状态与支付边界交给确定性后端。</p>
+  </div>
+
+  <div class="main">
+    <div class="col-layers">
+
+      <!-- 1 用户接入 -->
+      <div class="layer b-front">
+        <div class="layer-title">
+          <span class="badge c-front">1</span>
+          <span class="name">用户接入层 · React Web</span>
+          <span class="stack">TypeScript + 自动生成 Fetch SDK</span>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="t">旅行指挥舱</div><div class="d">需求向导 / 结果页</div></div>
+          <div class="card"><div class="t">订单资料中心</div><div class="d">上传与 OCR 复核</div></div>
+          <div class="card"><div class="t">任务控制台</div><div class="d">Agent 执行进度</div></div>
+          <div class="card"><div class="t">行程工作台</div><div class="d">继续 / 筛选 / 取消</div></div>
+          <div class="card"><div class="t">偏好与反馈</div><div class="d">记忆管理 / 评分</div></div>
+          <div class="card"><div class="t">系统状态页</div><div class="d">脱敏依赖状态</div></div>
+        </div>
+      </div>
+      <div class="arrow">
+        <svg width="24" height="24"><path d="M12 0 V18 M6 14 L12 22 L18 14" stroke="#4F6B9A" stroke-width="2" fill="none"/></svg>
+      </div>
+
+      <!-- 2 认证 -->
+      <div class="layer b-auth">
+        <div class="layer-title">
+          <span class="badge c-auth">2</span>
+          <span class="name">安全认证 · OIDC Provider</span>
+          <span class="stack">Authorization Code + PKCE，Token 仅存 sessionStorage</span>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="t">浏览器登录</div><div class="d">授权码流程 + PKCE，回调 /auth/callback</div></div>
+          <div class="card"><div class="t">后端校验</div><div class="d">JWK 验签、issuer / audience / UUID sub</div></div>
+          <div class="card"><div class="t">资源归属授权</div><div class="d">旅行/方案/资料/任务/反馈统一鉴权</div></div>
+        </div>
+      </div>
+      <div class="arrow">
+        <svg width="24" height="24"><path d="M12 0 V18 M6 14 L12 22 L18 14" stroke="#35705A" stroke-width="2" fill="none"/></svg>
+      </div>
+
+      <!-- 3 后端边界 -->
+      <div class="layer b-api">
+        <div class="layer-title">
+          <span class="badge c-api">3</span>
+          <span class="name">后端边界 · trip-agent-api</span>
+          <span class="stack">Java 21 · Spring Boot 3.5 · Spring AI</span>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="t">Controller / Application</div><div class="d">HTTP 参数、用例编排、事务</div></div>
+          <div class="card"><div class="t">Domain 领域层</div><div class="d">领域约束、不依赖框架</div></div>
+          <div class="card"><div class="t">Guardrails 防护</div><div class="d">注入 / 签名 / 域名 / PII 检查</div></div>
+          <div class="card"><div class="t">幂等与规则引擎</div><div class="d">Idempotency-Key、BigDecimal 预算</div></div>
+          <div class="card"><div class="t">HITL 人工确认</div><div class="d">费用动作执行前核对</div></div>
+          <div class="card"><div class="t">地图瓦片代理</div><div class="d">校验坐标 / 缩放 / MIME</div></div>
+        </div>
+      </div>
+      <div class="arrow">
+        <svg width="24" height="24"><path d="M12 0 V18 M6 14 L12 22 L18 14" stroke="#5B6B8C" stroke-width="2" fill="none"/></svg>
+      </div>
+
+      <!-- 4 智能编排 -->
+      <div class="layer b-agent">
+        <div class="layer-title">
+          <span class="badge c-agent">4</span>
+          <span class="name">智能编排层 · 八个 Agent</span>
+          <span class="stack">官方 MCP SDK + 官方 A2A SDK</span>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="t">Coordinator</div><div class="d">编排与版本保存</div></div>
+          <div class="card"><div class="t">Requirement / Research</div><div class="d">需求 / 知识调研</div></div>
+          <div class="card"><div class="t">Transport / Accommodation</div><div class="d">交通 / 住宿候选</div></div>
+          <div class="card"><div class="t">Recommendation / Budget</div><div class="d">推荐 / 预算分析</div></div>
+          <div class="card"><div class="t">Review</div><div class="d">冲突与可执行性复核</div></div>
+          <div class="card"><div class="t">MCP / A2A</div><div class="d">8 工具 / 任务委派</div></div>
+        </div>
+      </div>
+      <div class="arrow">
+        <svg width="24" height="24"><path d="M12 0 V18 M6 14 L12 22 L18 14" stroke="#2F6E78" stroke-width="2" fill="none"/></svg>
+      </div>
+
+      <!-- 5 AI 服务 -->
+      <div class="layer b-ai">
+        <div class="layer-title">
+          <span class="badge c-ai">5</span>
+          <span class="name">AI 与检索服务 · ai-retrieval-service</span>
+          <span class="stack">Python 3.12 · FastAPI</span>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="t">OCR / 多模态解析</div><div class="d">订单抽取、人工字段修正</div></div>
+          <div class="card"><div class="t">查询改写与路由</div><div class="d">意图识别、地点/日期过滤</div></div>
+          <div class="card"><div class="t">混合召回 + GraphRAG</div><div class="d">LanceDB 向量/关键词、Neo4j 图扩展</div></div>
+          <div class="card"><div class="t">Cross-Encoder 重排</div><div class="d">融合、去重、证据压缩</div></div>
+        </div>
+      </div>
+      <div class="arrow">
+        <svg width="24" height="24"><path d="M12 0 V18 M6 14 L12 22 L18 14" stroke="#9A6A2F" stroke-width="2" fill="none"/></svg>
+      </div>
+
+      <!-- 6 外部 -->
+      <div class="layer b-ext">
+        <div class="layer-title">
+          <span class="badge c-ext">6</span>
+          <span class="name">外部供应商（后端私有边界，失败关闭）</span>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="t">DeepSeek 大模型</div><div class="d">语义理解 / 候选生成，密钥仅服务端注入</div></div>
+          <div class="card"><div class="t">地图瓦片供应商</div><div class="d">OpenStreetMap，经后端代理访问</div></div>
+          <div class="card"><div class="t">MCP 实时工具</div><div class="d">天气 / 路线 / 汇率等，未配置返回 UNAVAILABLE</div></div>
+        </div>
+      </div>
+      <div class="arrow">
+        <svg width="24" height="24"><path d="M12 0 V18 M6 14 L12 22 L18 14" stroke="#6B6258" stroke-width="2" fill="none"/></svg>
+      </div>
+
+      <!-- 7 数据 -->
+      <div class="layer b-data">
+        <div class="layer-title">
+          <span class="badge c-data">7</span>
+          <span class="name">数据与消息基础设施</span>
+        </div>
+        <div class="cards">
+          <div class="card"><div class="t">PostgreSQL</div><div class="d">唯一权威源 · Outbox/Inbox · 审计</div></div>
+          <div class="card"><div class="t">Redis</div><div class="d">SSE 热缓存 · 会话 · 限流 · 分布式锁</div></div>
+          <div class="card"><div class="t">Kafka</div><div class="d">至少一次投递 · 有界重试 · 死信</div></div>
+          <div class="card"><div class="t">Neo4j</div><div class="d">带来源的知识图投影</div></div>
+          <div class="card"><div class="t">LanceDB</div><div class="d">公共库 / 用户记忆库物理隔离</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 可观测性 -->
+    <div class="col-obs">
+      <div class="obs-panel b-obs">
+        <div class="layer-title">
+          <span class="badge c-obs">OBS</span>
+          <span class="name">可观测性</span>
+        </div>
+        <div class="obs-node"><div class="t">OpenTelemetry</div><div class="d">覆盖 HTTP、Kafka、模型、RAG、Agent、MCP、A2A 与数据库</div></div>
+        <div class="obs-down">▼</div>
+        <div class="obs-node"><div class="t">OTel Collector</div><div class="d">统一采集 Trace、指标与日志</div></div>
+        <div class="obs-down">▼</div>
+        <div class="obs-node"><div class="t">Jaeger</div><div class="d">全链路追踪，开发者页脱敏展示</div></div>
+        <div class="obs-cover">
+          记录延迟、状态、模型、Prompt 版本、Token 与结果数；<br>
+          禁止记录 API Key、Authorization、证件号、完整订单号、OCR 原文与未脱敏偏好。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="item"><span class="sw"></span>请求 / 数据流向（自上而下）</div>
+    <div class="item"><span class="sw dash"></span>遥测数据上报（各层 → 可观测性）</div>
+  </div>
+</body>
+</html>

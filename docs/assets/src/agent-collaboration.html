@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1600px; }
+  body {
+    font-family: "Microsoft YaHei","PingFang SC","Segoe UI",sans-serif;
+    background:#FFFFFF; color:#1A1B1C; padding:32px 36px 26px;
+  }
+  .header { margin-bottom:22px; }
+  .header h1 { font-size:30px; font-weight:700; letter-spacing:1px; }
+  .header p { font-size:15px; color:#5F6670; margin-top:8px; }
+
+  .stage { display:flex; gap:18px; align-items:stretch; }
+  .side { width:250px; display:flex; flex-direction:column; gap:12px; }
+  .center { flex:1; display:flex; flex-direction:column; gap:14px; }
+
+  .box {
+    border:1px solid #E4E3DD; border-radius:8px; background:#FFFFFF; padding:12px 14px;
+  }
+  .box .bt { font-size:15px; font-weight:700; margin-bottom:8px; }
+  .box .bd { font-size:12.5px; color:#5F6670; line-height:1.6; }
+  .kv { display:flex; gap:8px; font-size:12.5px; line-height:1.5; margin-bottom:6px; }
+  .kv .k { color:#1A1B1C; font-weight:700; white-space:nowrap; }
+  .kv .v { color:#5F6670; }
+
+  .b-input { border-top:3px solid #9A6A2F; }
+  .b-output { border-top:3px solid #35705A; }
+
+  .agents { display:flex; gap:10px; }
+  .agent {
+    flex:1; border:1px solid #E4E3DD; border-radius:8px; background:#F7F7F5;
+    padding:12px 10px; text-align:center;
+  }
+  .agent .ico { font-size:18px; font-weight:700; color:#5B6B8C; }
+  .agent .nm { font-size:14px; font-weight:700; margin-top:6px; }
+  .agent .rl { font-size:11.5px; color:#5F6670; margin-top:5px; line-height:1.4; }
+
+  .coord-wrap { position:relative; }
+  .coord {
+    border:2px solid #4F6B9A; border-radius:10px; background:#FFFFFF;
+    padding:16px 20px; display:flex; align-items:center; gap:20px;
+  }
+  .coord .tt { font-size:19px; font-weight:700; color:#4F6B9A; white-space:nowrap; }
+  .coord .dd { font-size:13px; color:#5F6670; line-height:1.55; }
+
+  .supports { display:flex; gap:10px; }
+  .sup {
+    flex:1; border:1px solid #E4E3DD; border-radius:8px; padding:11px 13px; background:#FFFFFF;
+  }
+  .sup .t { font-size:14px; font-weight:700; }
+  .sup .d { font-size:12px; color:#5F6670; margin-top:5px; line-height:1.45; }
+  .s-rag { border-top:3px solid #2F6E78; }
+  .s-mcp { border-top:3px solid #9A6A2F; }
+  .s-rule { border-top:3px solid #35705A; }
+  .s-a2a { border-top:3px solid #5B6B8C; }
+
+  .flow-arrow { display:flex; align-items:center; justify-content:center; color:#5F6670; }
+  .flow-arrow .lab { font-size:12px; color:#5F6670; margin:0 6px; }
+
+  .legend {
+    margin-top:18px; font-size:12px; color:#5F6670; display:flex; gap:24px; align-items:center;
+  }
+  .legend .item { display:flex; align-items:center; gap:6px; }
+  .legend .sw { width:26px; height:0; border-top:2px solid #4F6B9A; }
+  .legend .sw.double { border-top:3px double #35705A; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <h1>多 Agent 协作架构</h1>
+    <p>Coordinator 统一编排七个专项 Agent；每个 Agent 拥有独立类、输入输出 DTO、Prompt 版本、策略与 JSON Schema。</p>
+  </div>
+
+  <div class="stage">
+    <!-- 输入 -->
+    <div class="side">
+      <div class="box b-input">
+        <div class="bt">输入 · ContextEnvelope</div>
+        <div class="bd">
+          <div class="kv"><span class="k">系统规则</span><span class="v">硬约束与安全边界</span></div>
+          <div class="kv"><span class="k">用户约束</span><span class="v">目的地 / 日期 / 预算</span></div>
+          <div class="kv"><span class="k">已确认订单</span><span class="v">OCR 复核结果</span></div>
+          <div class="kv"><span class="k">检索证据</span><span class="v">公共知识 + 用户记忆</span></div>
+          <div class="kv"><span class="k">工具结果</span><span class="v">MCP 实时数据</span></div>
+          <div class="kv"><span class="k">计划版本</span><span class="v">不可变版本号</span></div>
+          <div class="kv"><span class="k">Token 预算</span><span class="v">按职责裁剪，硬约束不删</span></div>
+          <div class="kv"><span class="k">隐私标签</span><span class="v">投递前按标签裁剪</span></div>
+        </div>
+      </div>
+      <div class="flow-arrow">
+        <span class="lab">投递</span>
+        <svg width="30" height="40"><path d="M0 20 H22 M16 12 L26 20 L16 28" stroke="#9A6A2F" stroke-width="2" fill="none"/></svg>
+      </div>
+    </div>
+
+    <!-- 中央 -->
+    <div class="center">
+      <div class="agents">
+        <div class="agent"><div class="ico">01</div><div class="nm">Requirement</div><div class="rl">需求建模<br>参数校验</div></div>
+        <div class="agent"><div class="ico">02</div><div class="nm">Research</div><div class="rl">知识调研<br>证据收集</div></div>
+        <div class="agent"><div class="ico">03</div><div class="nm">Transport</div><div class="rl">交通候选<br>班次时刻</div></div>
+        <div class="agent"><div class="ico">04</div><div class="nm">Accommodation</div><div class="rl">住宿候选<br>位置匹配</div></div>
+        <div class="agent"><div class="ico">05</div><div class="nm">Recommendation</div><div class="rl">景点推荐<br>行程节奏</div></div>
+        <div class="agent"><div class="ico">06</div><div class="nm">Budget</div><div class="rl">预算计算<br>成本分析</div></div>
+        <div class="agent"><div class="ico">07</div><div class="nm">Review</div><div class="rl">冲突复核<br>可执行性</div></div>
+      </div>
+
+      <div class="coord-wrap">
+        <div class="coord">
+          <div class="tt">08 Coordinator Agent</div>
+          <div class="dd">
+            接收规划任务 → 获取公共知识、用户记忆与实时工具结果 → 并行委派交通 / 住宿 / 推荐等任务 →
+            汇总 Schema 校验后的候选与证据 → 提交规则引擎 → 保存两个方案（BALANCED / LOW_TRANSIT）与不可变版本。
+          </div>
+        </div>
+      </div>
+
+      <div class="supports">
+        <div class="sup s-rag"><div class="t">RAG / GraphRAG</div><div class="d">LanceDB 混合召回、Neo4j 图扩展、Cross-Encoder 重排；无证据返回 evidenceInsufficient</div></div>
+        <div class="sup s-mcp"><div class="t">MCP 工具</div><div class="d">Streamable HTTP，八个严格 Schema 工具；身份 / 白名单默认拒绝，结果按不可信内容处理</div></div>
+        <div class="sup s-rule"><div class="t">确定性规则引擎</div><div class="d">BigDecimal 预算、时间窗 / 距离 / 冲突判定；模型不决定金额与支付边界</div></div>
+        <div class="sup s-a2a"><div class="t">A2A 与 Checkpoint</div><div class="d">每次委派独立任务与 Span；checkpoint 绑定任务 / Prompt 版本，持久化去重与并发重放</div></div>
+      </div>
+    </div>
+
+    <!-- 输出 -->
+    <div class="side">
+      <div class="flow-arrow">
+        <span class="lab">聚合</span>
+        <svg width="30" height="40"><path d="M0 20 H22 M16 12 L26 20 L16 28" stroke="#35705A" stroke-width="2" fill="none"/></svg>
+      </div>
+      <div class="box b-output">
+        <div class="bt">输出 · 方案结果</div>
+        <div class="bd">
+          <div class="kv"><span class="k">候选</span><span class="v">JSON Schema 校验通过</span></div>
+          <div class="kv"><span class="k">证据</span><span class="v">来源可追溯，不臆造 ID</span></div>
+          <div class="kv"><span class="k">冲突</span><span class="v">确定性规则引擎判定</span></div>
+          <div class="kv"><span class="k">预算</span><span class="v">BigDecimal 精确计算</span></div>
+          <div class="kv"><span class="k">版本</span><span class="v">BALANCED / LOW_TRANSIT 不可变版本</span></div>
+          <div class="kv"><span class="k">费用动作</span><span class="v">仅候选，须人工确认</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="item"><span class="sw"></span>任务委派（Coordinator → 专项 Agent）</div>
+    <div class="item"><span class="sw double"></span>候选与证据返回（专项 Agent → Coordinator）</div>
+  </div>
+</body>
+</html>

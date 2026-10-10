@@ -5,14 +5,29 @@ Java 21、Spring Boot 3.5 和 Spring AI，AI/OCR/检索服务采用 Python 3.12
 与 FastAPI，持久化和消息基础设施包括 PostgreSQL、Redis、Kafka、Neo4j
 与 LanceDB。
 
-## 项目功能介绍
+## 项目架构
 
-平台核心业务闭环已完整实现：旅行需求建模与可恢复草稿、订单文档
-（PNG/JPEG/WEBP/PDF）安全检查与 OCR 解析、人工字段复核、八个 Agent 协作的
-行程生成、方案比较与地图/时间线联动、预算分析与冲突证据、不可变版本重规划和
-费用操作人工确认、行程工作台、偏好与记忆管理、结构化反馈、OIDC 登录与资源
-归属授权、受控开发者追踪与系统状态页。公共 API v1 契约已冻结，前后端共用
-生成 SDK 与兼容性基线。
+### 系统总体架构
+
+平台按用户接入、安全认证、后端边界、智能编排、AI 服务、外部供应商与数据
+基础设施分层；浏览器请求只进入 Spring Boot，FastAPI、模型、检索、MCP 与
+第三方供应商均位于私有后端边界。
+
+![系统总体架构](docs/assets/architecture-overview.png)
+
+### 多 Agent 协作架构
+
+Coordinator 统一编排七个专项 Agent，每个 Agent 拥有独立类、输入输出 DTO、
+Prompt 版本、策略与 JSON Schema；候选与证据经规则引擎校验后保存为不可变版本。
+
+![多 Agent 协作架构](docs/assets/agent-collaboration.png)
+
+### 核心规划链路与异步治理
+
+写操作先落 PostgreSQL 与 Outbox，经 Kafka 至少一次投递；事件先写库再
+广播 SSE，重试有界、失败进入死信，终态在 SSE 与轮询间保持一致。
+
+![核心规划链路与异步治理](docs/assets/planning-flow.png)
 
 ## 核心能力
 
