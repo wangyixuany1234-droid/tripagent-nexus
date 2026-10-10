@@ -7,21 +7,33 @@ Java 21、Spring Boot 3.5 和 Spring AI，AI/OCR/检索服务采用 Python 3.12
 
 ## 当前状态
 
-阶段一至阶段十后端已经完成并冻结公共 API v1。阶段十一完成 React
-前端工程与视觉系统，阶段十二完成产品首页、旅行需求向导、订单资料中心和
-规划进度页。阶段十三完成系统核心结果页，包括方案比较、地图与时间线联动、
-预算分析、冲突与证据、不可变版本重规划和费用操作人工确认。阶段十四完成
-行程工作台、偏好与记忆、反馈中心、受控开发者追踪、系统状态以及发布验收链路。
-阶段十五已建立功能、契约、并发、故障、性能、安全、可访问性和覆盖率测试
-控制面。测试阶段十已完成智能能力的三轮 Mock 基线采集；测试阶段十一已完成
-Chromium/WebKit 前端稳定性与可访问性矩阵，Firefox 因当前 macOS / TRAE 沙箱
-profile 目录限制保持环境阻塞。测试阶段十二已完成 OpenTelemetry、日志、指标和
-告警的离线审计与模拟故障验证，真实 Prometheus / Alertmanager 小流量故障注入
-仍未执行。测试阶段十三已执行最终全量回归，结论为 No-Go：依赖扫描存在
-Critical/High 漏洞，前后端 E2E 存在过期会话 return path 失败，性能、负载、
-镜像扫描、故障恢复和最终数据一致性在当前环境仍未完整验收。真实模型、真实 OCR、
-人工语义复核、真实后端小流量、真实可观测性告警和质量阈值仍未验收，不能将 Mock
-或模拟基线解释为生产质量结论。
+平台核心业务闭环已完整实现：旅行需求建模与可恢复草稿、订单文档
+（PNG/JPEG/WEBP/PDF）安全检查与 OCR 解析、人工字段复核、八个 Agent 协作的
+行程生成、方案比较与地图/时间线联动、预算分析与冲突证据、不可变版本重规划和
+费用操作人工确认、行程工作台、偏好与记忆管理、结构化反馈、OIDC 登录与资源
+归属授权、受控开发者追踪与系统状态页。公共 API v1 契约已冻结，前后端共用
+生成 SDK 与兼容性基线。
+
+最近一轮全量验证（2026-09-20 至 2026-09-28，Windows + Docker 本地环境）结果：
+
+- 安全扫描：Secret 扫描 0 泄露、SAST 0 findings；Trivy 依赖与两个服务镜像
+  扫描 Critical/High 均为 0，npm audit 仅剩 3 个 moderate。
+- 功能回归：Java 单元与集成、OpenAPI/AsyncAPI 契约一致性、FastAPI pytest、
+  前端 Vitest 全部通过；Playwright 端到端执行的 28 项全部通过、0 失败
+  （另 22 项需真实后端或性能环境，本轮未执行）。
+- 已修复缺陷：此前"过期会话重定向页缺少返回并重新登录入口、return path 保护
+  失败"已修复，并有专用回归测试覆盖。
+- 并发与故障：同资源 20 并发竞态测试符合预期（1 次成功写、19 次幂等或乐观锁
+  拒绝、0 重复资源、0 业务错误）；消息重试、死信与任务恢复混沌测试通过。
+- 性能：k6 Smoke 通过并产出完整资源与延迟指标；Load 完成约 143 req/s 实测并
+  产出指标，但部分阈值未达标，判级为未通过。
+- 前端稳定性：Mock 路由隔离矩阵通过（0 失败、0 环境阻塞），覆盖三浏览器、
+  六档视口与七种网络模式。
+
+以下仍为未完成的真实环境验收，其结论不得外推为生产可用：真实模型、真实 OCR
+与人工语义复核（质量阈值未定义）；真实 Prometheus / Alertmanager 小流量故障
+注入；最终数据一致性复验（需授权数据库）；负载阈值与前端覆盖率长期目标
+（当前行覆盖率约 46%）。
 
 ## 核心能力
 
@@ -61,7 +73,7 @@ packages/api-contract               当前 OpenAPI、AsyncAPI 与 JSON Schema
 contracts/openapi/tripagent-v1.yaml 公共 OpenAPI v1 兼容性基线
 apps/web                            React 前端与自动生成的 TypeScript Fetch SDK
 infrastructure/otel-collector       OpenTelemetry Collector 配置
-docs                                中文架构、领域、状态机和阶段验收文档
+docs                                中文架构、领域、状态机与契约文档
 ```
 
 ## 接口与兼容性
@@ -236,34 +248,24 @@ QA_PROFILE=load make test-performance
 设置 `REAL_MODEL_TEST_ENABLED=true`，并受并发 1、最多 5 次调用的集中阈值
 约束。任何性能、故障或安全脚本都不得指向地图、天气、DeepSeek 等第三方服务。
 
-阶段十一前端稳定性矩阵使用 Mock 路由隔离数据，覆盖 Chromium、Firefox、WebKit
-与 375x667 至 1920x1080 视口，并生成
-`output/test-results/<QA_RUN_ID>/json/stage11-summary.json`。当前本机执行中
-Chromium/WebKit 已通过，Firefox 在浏览器启动阶段被沙箱/profile 目录问题阻塞；
-详情见[测试阶段十一验收报告](docs/测试阶段十一-前端稳定性与可访问性验收.md)。
-该结果不替代真实后端小流量报告。
+前端稳定性矩阵使用 Mock 路由隔离数据，覆盖 Chromium、Firefox、WebKit 与
+375x667 至 1920x1080 视口，并生成
+`output/test-results/<QA_RUN_ID>/json/stage11-summary.json`；最近一次执行
+0 失败、0 环境阻塞。该结果不替代真实后端小流量报告。
 
-阶段十二可观测性与告警验收使用离线证据审计和模拟阈值验证，覆盖 Trace 组件、
+可观测性与告警验收使用离线证据审计和模拟阈值验证，覆盖 Trace 组件、
 HTTP/Kafka/log 关联、指标源、Prometheus 告警规则和隐私脱敏扫描，并生成
-`output/test-results/<QA_RUN_ID>/json/stage12-summary.json`。当前离线审计和 9 类
-模拟故障告警均通过，完整门禁因真实 Prometheus / Alertmanager 小流量故障注入未执行
-保持 `BLOCKED_FOR_REAL_VALIDATION`；详情见
-[测试阶段十二验收报告](docs/测试阶段十二-可观测性与告警验收.md)。该结果不替代
-真实告警触发、恢复和日志/指标/Trace 互相关联验证。
+`output/test-results/<QA_RUN_ID>/json/stage12-summary.json`；真实
+Prometheus / Alertmanager 小流量故障注入未执行，该结果不替代真实告警触发、
+恢复和日志/指标/Trace 互相关联验证。
 
-测试阶段十三最终全量回归按 Secret Scan、SAST、依赖/镜像、单元、契约、集成、
-E2E、AI、安全、性能、负载、故障恢复和数据一致性顺序执行，主证据位于
-`output/test-results/stage13-20260916T100316Z/`，AI 子证据位于
-`output/test-results/stage13-20260916T100316Z-ai-regression/` 和
-`output/test-results/stage13-20260916T100316Z-ai-security/`。当前结论为 No-Go；
-详情见[测试阶段十三最终全量回归验收报告](docs/测试阶段十三-最终全量回归验收.md)。
+最终全量回归按 Secret Scan、SAST、依赖/镜像、单元、契约、集成、E2E、AI、
+安全、性能、负载、故障恢复和数据一致性顺序执行，证据统一保存于
+`output/test-results/<QA_RUN_ID>/`，最近一轮结论见上文"当前状态"。
 
 统一阈值位于 `qa/config/thresholds.json`，合成数据清单位于
 `qa/fixtures/manifest.json`。JUnit XML、JSON、HTML、覆盖率、性能结果和脱敏日志
-统一保存到 `output/test-results/<QA_RUN_ID>/`。测试环境审计、实测结果和未验收项
-见[测试阶段一：可测试性审计与统一测试环境验收](docs/测试阶段一-可测试性审计与统一测试环境验收.md)；
-完整自动化体系的历史验收见
-[阶段十五自动化测试与稳定性验收](docs/阶段十五-自动化测试与稳定性验收.md)。
+统一保存到 `output/test-results/<QA_RUN_ID>/`。
 
 ## 后端验证
 
@@ -326,7 +328,7 @@ gitleaks dir . --config .gitleaks.toml --no-banner --redact
 
 ## 主流程
 
-阶段十 E2E 覆盖以下真实后端路径：
+端到端回归覆盖以下真实后端路径：
 
 1. 创建旅行并保存需求。
 2. 上传脱敏订单。
@@ -360,31 +362,15 @@ gitleaks dir . --config .gitleaks.toml --no-banner --redact
 - [领域模型](docs/领域模型.md)
 - [任务状态机](docs/状态机.md)
 - [错误码](docs/错误码.md)
-- [阶段四：订单解析](docs/阶段四-订单文档解析.md)
-- [阶段五：双层检索与 GraphRAG](docs/阶段五-双层检索.md)
-- [阶段六：MCP 与 A2A](docs/阶段六-工具协议与智能体协作.md)
-- [阶段七：端到端规划](docs/阶段七-端到端旅行规划.md)
-- [阶段八：异步治理](docs/阶段八-异步治理.md)
-- [阶段九：可观测性与评测](docs/阶段九-可观测性安全防护与评测.md)
-- [阶段十：后端集成验收](docs/阶段十-后端验收.md)
-- [阶段十一：前端工程与视觉系统](docs/阶段十一-前端工程与视觉系统.md)
-- [阶段十二：旅行创建主流程](docs/阶段十二-旅行创建主流程.md)
-- [阶段十三：系统核心结果页](docs/阶段十三-系统核心结果页.md)
-- [阶段十四：辅助页面、全量联调与发布验收](docs/阶段十四-辅助页面全量联调与发布验收.md)
-- [阶段十五：自动化测试与稳定性验收](docs/阶段十五-自动化测试与稳定性验收.md)
-- [测试阶段一：可测试性审计与统一测试环境验收](docs/测试阶段一-可测试性审计与统一测试环境验收.md)
-- [测试阶段十：智能能力正确性、鲁棒性与可重复性验收](docs/测试阶段十-智能能力评测验收.md)
-- [测试阶段十一：前端稳定性与可访问性验收](docs/测试阶段十一-前端稳定性与可访问性验收.md)
-- [测试阶段十二：可观测性与告警验收](docs/测试阶段十二-可观测性与告警验收.md)
-- [测试阶段十三：最终全量回归验收](docs/测试阶段十三-最终全量回归验收.md)
+- [Agent 中间步骤恢复契约](docs/Agent中间步骤恢复契约.md)
 
-## 阶段边界
+## 验证边界与发布约束
 
-阶段十五已建立自动化测试与 CI 门禁，但 Docker 依赖的性能、长稳、故障注入
-和动态安全套件尚未在当前环境完成，前端覆盖率也未达到长期目标。阶段十三最终
-全量回归当前为 No-Go，必须先清零 Critical/High 依赖漏洞、修复 E2E return path
-缺陷，并在具备 Docker、k6 和授权数据库的环境中完成性能、负载、故障恢复和一致性
-复验。阶段十二的可观测性结论目前仅覆盖离线审计和模拟告警，不能替代真实 Prometheus /
-Alertmanager 小流量故障注入。费用确认仅记录候选授权，不会自动支付或调用真实
-供应商；演示数据不得解释为真实第三方调用成功。智能能力 Mock 基线同样不得替代
-真实模型、真实图片和人工语义验收。
+- 当前所有通过结论均来自本地 Mock 或离线环境（MockModelGateway、Mock 外部
+  工具、Mock 路由隔离、离线可观测性审计），仅证明工程正确性与回归稳定性。
+- 费用确认仅记录候选授权，不会自动支付或调用真实供应商；演示数据不得解释为
+  真实第三方调用成功。
+- 智能能力 Mock 基线不得替代真实模型、真实图片和人工语义验收；可观测性离线
+  审计不得替代真实 Prometheus / Alertmanager 小流量故障注入。
+- 发布门禁保持：Critical/High 漏洞为 0、核心端到端回归通过、负载阈值达标、
+  最终数据一致性复验通过、真实环境验收齐备；任一未满足即不得发布。
