@@ -1,0 +1,19 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "ANY",
+    "urlPathPattern": "/(maps/.*|tools/(weather|exchange-rate|route))",
+    "headers": {
+      "X-QA-Scenario": {
+        "equalTo": "malformed"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "body": "{\"incomplete\":"
+  }
+}

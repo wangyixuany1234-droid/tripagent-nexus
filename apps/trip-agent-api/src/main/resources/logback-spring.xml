@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <conversionRule
+        conversionWord="sanitizedMessage"
+        class="com.tripagent.nexus.observability.SanitizingMessageConverter"/>
+    <conversionRule
+        conversionWord="sanitizedThrowable"
+        class="com.tripagent.nexus.observability.SanitizingThrowableConverter"/>
+
+    <property
+        name="CONSOLE_PATTERN"
+        value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} level=%-5level service=trip-agent-api traceId=%X{traceId:-} requestId=%X{requestId:-} logger=%logger{36} message=&quot;%sanitizedMessage&quot;%n%sanitizedThrowable"/>
+
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>

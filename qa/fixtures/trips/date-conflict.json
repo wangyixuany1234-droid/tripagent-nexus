@@ -1,0 +1,42 @@
+{
+  "trip": {
+    "userId": "10000000-0000-0000-0000-000000000201",
+    "title": "合成数据-日期冲突行程",
+    "timeZone": "Asia/Shanghai"
+  },
+  "requirement": {
+    "origin": {
+      "name": "上海"
+    },
+    "destinations": [
+      {
+        "name": "北京"
+      }
+    ],
+    "startDate": "2026-10-05",
+    "endDate": "2026-10-03",
+    "travelers": [
+      {
+        "travelerId": "20000000-0000-0000-0000-000000000201",
+        "displayName": "合成旅行者",
+        "type": "ADULT",
+        "accessibilityNeeds": []
+      }
+    ],
+    "totalBudget": 5000,
+    "currency": "CNY",
+    "interests": [
+      "历史文化"
+    ],
+    "pace": "BALANCED",
+    "mustVisit": [
+      "故宫博物院"
+    ],
+    "avoid": [],
+    "freeTextConstraints": "结束日期早于开始日期，用于验证日期冲突处理。"
+  },
+  "expected": {
+    "accepted": false,
+    "errorCode": "VALIDATION_FAILED"
+  }
+}

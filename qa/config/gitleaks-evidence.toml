@@ -1,0 +1,26 @@
+title = "TripAgent chaos evidence scan"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Structured trace correlation values are identifiers, not credentials"
+regexTarget = "match"
+regexes = ['''(?:trip-agent-)?api traceId=[0-9a-f]{16,32}\s''']
+
+[[rules]]
+id = "deepseek-api-key"
+description = "DeepSeek API key"
+regex = '''(?i)(?:sk|deepseek)-[A-Za-z0-9][A-Za-z0-9_-]{20,}'''
+keywords = ["sk-", "deepseek-"]
+
+[[rules]]
+id = "authorization-bearer-token"
+description = "Persisted bearer credential"
+regex = '''(?i)authorization["']?\s*[:=]\s*["']?bearer\s+[A-Za-z0-9._~+/=-]{16,}'''
+keywords = ["authorization", "bearer"]
+
+[[rules.allowlists]]
+description = "Exact existing local-test credential and sanitizer test fixture"
+regexTarget = "match"
+regexes = ['''(?i)Authorization: Bearer (?:test-service-token|synthetic-bearer-value)''']

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/budget-agent.schema.json",
+  "title": "BudgetAgent Contract",
+  "x-agent-card": {
+    "name": "BudgetAgent",
+    "description": "Aggregates specialist costs and diagnoses deterministic overruns.",
+    "version": "1.0.0",
+    "skills": ["exchange_rate", "budget_validate"],
+    "timeoutMs": 20000,
+    "retry": { "maxAttempts": 2, "initialBackoffMs": 200 },
+    "errorCodes": [
+      "BUDGET_INPUT_INVALID",
+      "BUDGET_OUTPUT_INVALID",
+      "BUDGET_CURRENCY_UNAVAILABLE"
+    ],
+    "allowDegraded": false,
+    "promptTemplateVersion": "budget-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "budgetLimit", "currency", "costItems"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "budgetLimit": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "costItems": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sourceAgent",
+              "category",
+              "description",
+              "amount",
+              "currency"
+            ],
+            "properties": {
+              "sourceAgent": {
+                "$ref": "common.schema.json#/$defs/agentName"
+              },
+              "category": { "type": "string" },
+              "description": { "type": "string" },
+              "amount": { "type": "number", "minimum": 0 },
+              "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+            }
+          }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "total", "budgetLimit", "overrun", "lineItems"],
+      "properties": {
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "total": { "type": "number", "minimum": 0 },
+        "budgetLimit": { "type": "number", "minimum": 0 },
+        "overrun": { "type": "number" },
+        "lineItems": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "BudgetAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

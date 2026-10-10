@@ -1,0 +1,4 @@
+app:
+  model:
+    fallback-provider: mock
+    allow-mock-fallback: true

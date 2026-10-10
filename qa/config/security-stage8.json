@@ -1,0 +1,21 @@
+{
+  "requestTimeoutSeconds": 8,
+  "batchTimeoutSeconds": 600,
+  "scannerTimeoutSeconds": 180,
+  "serverStartupSeconds": 120,
+  "maxServerLifetimeSeconds": 1800,
+  "boundedAbuseRequests": 12,
+  "concurrentTaskRequests": 6,
+  "maxActiveScanSeconds": 180,
+  "maxPassiveScanSeconds": 90,
+  "maxZAPRecords": 1500,
+  "deepJsonLevels": 80,
+  "maxUploadProbeBytes": 10485761,
+  "releaseGate": {
+    "Critical": 0,
+    "High": 0,
+    "MediumRequiresDisposition": true,
+    "requireGitHistory": true,
+    "requireBuiltImageScan": true
+  }
+}

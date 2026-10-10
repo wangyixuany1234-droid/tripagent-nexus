@@ -1,0 +1,88 @@
+spring:
+  ai:
+    model:
+      chat: none
+    openai:
+      api-key: ""
+      base-url: http://127.0.0.1:65535
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:1/tripagent_test_unconfigured
+    username: postgres
+    password: postgres
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 1
+      password: test-redis-password
+  kafka:
+    bootstrap-servers: 127.0.0.1:1
+    admin:
+      fail-fast: false
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+server:
+  port: 0
+
+app:
+  security:
+    enabled: false
+  guardrails:
+    allowed-external-hosts: localhost,127.0.0.1,postgres,redis,kafka,neo4j,toxiproxy,wiremock,ai-retrieval-service,trip-agent-api
+  maps:
+    enabled: false
+    tile-base-url: http://127.0.0.1:65535/maps
+  developer-tools:
+    enabled: false
+    jaeger-base-url: http://127.0.0.1:65535
+  agents:
+    enabled: false
+  async-governance:
+    enabled: false
+    redis-enabled: false
+    operations-token: test-operations-token-000000000001
+  planning:
+    enabled: false
+    provider-mode: MOCK
+  upload:
+    storage-root: ${UPLOAD_STORAGE_ROOT:./target/test-uploads}
+  document-processing:
+    messaging-enabled: false
+  health:
+    kafka:
+      enabled: false
+    ai-retrieval:
+      enabled: false
+  ai-retrieval:
+    base-url: http://127.0.0.1:65535
+    service-token: test-service-token
+  model:
+    provider: none
+    fallback-provider: none
+    allow-mock-fallback: false
+  mcp:
+    base-url: http://127.0.0.1:65535
+    service-token: test-service-token
+    provider-mode: MOCK
+
+management:
+  endpoint:
+    health:
+      group:
+        readiness:
+          include: readinessState,db
+  tracing:
+    enabled: false
+  health:
+    redis:
+      enabled: false
+  otlp:
+    tracing:
+      endpoint: http://127.0.0.1:65535/v1/traces
+
+logging:
+  level:
+    kafka: WARN
+    org.apache.zookeeper: WARN
+    state.change.logger: WARN

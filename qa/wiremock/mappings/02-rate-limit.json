@@ -1,0 +1,22 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "ANY",
+    "urlPathPattern": "/(maps/.*|tools/(weather|exchange-rate|route))",
+    "headers": {
+      "X-QA-Scenario": {
+        "equalTo": "rate-limit"
+      }
+    }
+  },
+  "response": {
+    "status": 429,
+    "headers": {
+      "Content-Type": "application/json",
+      "Retry-After": "1"
+    },
+    "jsonBody": {
+      "code": "SYNTHETIC_RATE_LIMIT"
+    }
+  }
+}

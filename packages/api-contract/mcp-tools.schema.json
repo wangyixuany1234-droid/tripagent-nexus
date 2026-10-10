@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/mcp-tools.schema.json",
+  "title": "TripAgent MCP Tool Contracts",
+  "description": "Input and output schemas served through the official MCP protocol endpoint.",
+  "x-transport-context": {
+    "agentHeader": "X-Agent-Name",
+    "ownerTaskHeader": "X-Owner-Task-Id",
+    "ownerTaskFormat": "uuid",
+    "source": "agent execution context",
+    "modelWritable": false,
+    "expectedServer": {
+      "name": "tripagent-tools-mcp",
+      "version": "1.0.0"
+    },
+    "manifestPolicy": "reject duplicate names and any schema mismatch against x-tools",
+    "responsePolicy": "validate structuredContent against the registered output schema",
+    "resourceScopedTools": ["booking_parse", "itinerary_store"]
+  },
+  "$defs": {
+    "toolResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "providerMode", "data", "warnings"],
+      "properties": {
+        "status": { "enum": ["SUCCEEDED", "UNAVAILABLE", "FAILED"] },
+        "providerMode": { "enum": ["LIVE", "MOCK", "INTERNAL"] },
+        "data": {
+          "type": "object",
+          "properties": {
+            "asOf": { "type": "string", "format": "date" },
+            "reachable": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 1000 }
+        }
+      }
+    },
+    "place_search_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["query", "city"],
+      "properties": {
+        "query": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "city": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "region": { "type": "string", "maxLength": 100 },
+        "maxResults": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "default": 10
+        }
+      }
+    },
+    "weather_query_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["city", "startDate", "endDate"],
+      "properties": {
+        "city": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" }
+      }
+    },
+    "route_calculate_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "destination", "departureTime", "modes"],
+      "properties": {
+        "origin": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "destination": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "departureTime": { "type": "string", "format": "date-time" },
+        "modes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": ["FLIGHT", "TRAIN", "METRO", "BUS", "TAXI", "WALK"]
+          }
+        }
+      }
+    },
+    "exchange_rate_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "fromCurrency", "toCurrency", "asOf"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "fromCurrency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "toCurrency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "asOf": { "type": "string", "format": "date" }
+      }
+    },
+    "opening_hours_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["placeId", "date"],
+      "properties": {
+        "placeId": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "date": { "type": "string", "format": "date" }
+      }
+    },
+    "booking_parse_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["documentId"],
+      "properties": {
+        "documentId": { "type": "string", "format": "uuid" }
+      }
+    },
+    "budget_validate_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "budgetLimit", "items"],
+      "properties": {
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "budgetLimit": { "type": "number", "minimum": 0 },
+        "items": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["category", "description", "amount", "currency"],
+            "properties": {
+              "category": { "type": "string", "maxLength": 100 },
+              "description": { "type": "string", "maxLength": 500 },
+              "amount": { "type": "number", "minimum": 0 },
+              "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+            }
+          }
+        }
+      }
+    },
+    "itinerary_store_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tripId", "planVersion", "itinerary", "idempotencyKey"],
+      "properties": {
+        "tripId": { "type": "string", "format": "uuid" },
+        "planVersion": { "type": "integer", "minimum": 1 },
+        "itinerary": { "type": "object" },
+        "idempotencyKey": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9._:-]+$"
+        }
+      }
+    }
+  },
+  "x-tools": {
+    "place_search": {
+      "input": "#/$defs/place_search_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": true,
+      "idempotent": true
+    },
+    "weather_query": {
+      "input": "#/$defs/weather_query_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": true,
+      "idempotent": true
+    },
+    "route_calculate": {
+      "input": "#/$defs/route_calculate_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": true,
+      "idempotent": true
+    },
+    "exchange_rate": {
+      "input": "#/$defs/exchange_rate_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": true,
+      "idempotent": true
+    },
+    "opening_hours": {
+      "input": "#/$defs/opening_hours_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": true,
+      "idempotent": true
+    },
+    "booking_parse": {
+      "input": "#/$defs/booking_parse_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": true,
+      "idempotent": true
+    },
+    "budget_validate": {
+      "input": "#/$defs/budget_validate_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": true,
+      "idempotent": true
+    },
+    "itinerary_store": {
+      "input": "#/$defs/itinerary_store_input",
+      "output": "#/$defs/toolResult",
+      "readOnly": false,
+      "idempotent": true
+    }
+  }
+}

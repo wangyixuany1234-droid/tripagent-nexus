@@ -1,0 +1,58 @@
+rules:
+  - id: tripagent-no-frontend-secrets
+    message: 前端代码不得读取或嵌入密钥、令牌或密码。
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-regex: 'import\.meta\.env\.VITE_[A-Z0-9_]*(?:KEY|SECRET|TOKEN|PASSWORD)'
+    paths:
+      include:
+        - /apps/web/src/**
+      exclude:
+        - "**/*.test.*"
+        - "**/*.spec.*"
+        - "**/__tests__/**"
+
+  - id: tripagent-no-direct-third-party-map-request
+    message: 浏览器不得绕过后端代理直接请求第三方地图服务。
+    severity: ERROR
+    languages:
+      - typescript
+      - javascript
+    pattern-regex: 'https?://[^"''\s]*(?:tile\.openstreetmap\.org|api\.mapbox\.com|tiles\.mapbox\.com|restapi\.amap\.com|webapi\.amap\.com|api\.gaode\.com)[^"''\s]*'
+    paths:
+      include:
+        - /apps/web/src/**
+      exclude:
+        - "**/*.test.*"
+        - "**/*.spec.*"
+        - "**/__tests__/**"
+
+  - id: tripagent-no-sensitive-java-log-fields
+    message: 日志不得直接记录凭据、OCR 原文或完整请求体。
+    severity: ERROR
+    languages:
+      - java
+    patterns:
+      - pattern: $LOGGER.$METHOD(..., $VALUE, ...)
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: (trace|debug|info|warn|error)
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: (?i).*(authorization|apiKey|ocrText|requestBody|documentBytes).*
+
+  - id: tripagent-no-sensitive-python-log-fields
+    message: 日志不得直接记录凭据、OCR 原文或完整用户内容。
+    severity: ERROR
+    languages:
+      - python
+    patterns:
+      - pattern: $LOGGER.$METHOD(..., $KEY=$VALUE, ...)
+      - metavariable-regex:
+          metavariable: $METHOD
+          regex: (debug|info|warning|error|exception)
+      - metavariable-regex:
+          metavariable: $KEY
+          regex: (?i)(authorization|api_key|ocr_text|query|content)

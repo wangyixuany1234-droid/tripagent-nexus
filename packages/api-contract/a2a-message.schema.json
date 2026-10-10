@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/a2a-message.schema.json",
+  "title": "TripAgent A2A Message",
+  "description": "Bounded A2A message used for one agent delegation.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["role", "parts", "messageId", "contextId", "metadata"],
+  "properties": {
+    "role": {
+      "enum": ["ROLE_USER", "ROLE_AGENT"]
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/textPart"
+          },
+          {
+            "$ref": "#/$defs/dataPart"
+          }
+        ]
+      }
+    },
+    "messageId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "contextId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "taskId": {
+      "type": ["string", "null"],
+      "format": "uuid"
+    },
+    "referenceTaskIds": {
+      "type": ["array", "null"],
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "format": "uuid"
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["string", "number", "integer", "boolean", "null"]
+      },
+      "maxProperties": 20
+    },
+    "extensions": {
+      "type": ["array", "null"],
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "maxLength": 200
+      }
+    },
+    "kind": {
+      "const": "message"
+    }
+  },
+  "$defs": {
+    "textPart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "kind": {
+          "const": "text"
+        },
+        "text": {
+          "type": "string",
+          "maxLength": 10000
+        },
+        "metadata": {
+          "type": ["object", "null"]
+        }
+      }
+    },
+    "dataPart": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["data"],
+      "properties": {
+        "kind": {
+          "const": "data"
+        },
+        "data": {
+          "type": "object",
+          "maxProperties": 100
+        },
+        "metadata": {
+          "type": ["object", "null"]
+        }
+      }
+    }
+  },
+  "x-privacy": {
+    "rawPromptAllowed": false,
+    "authorizationHeaderAllowed": false,
+    "contextMustBeMinimized": true
+  },
+  "x-delegation-context": {
+    "requestMetadata": {
+      "ownerTaskId": {
+        "type": "string",
+        "format": "uuid",
+        "source": "orchestrator",
+        "modelWritable": false
+      }
+    },
+    "responseBinding": [
+      "task.id remains stable while polling",
+      "task.contextId equals the delegated logical taskId",
+      "result.taskId equals task.id",
+      "result.agentName equals the registered target"
+    ],
+    "maxResultBytes": 1048576
+  }
+}

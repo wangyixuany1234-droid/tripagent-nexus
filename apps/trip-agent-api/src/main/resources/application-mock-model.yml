@@ -1,0 +1,9 @@
+spring:
+  ai:
+    model:
+      chat: none
+
+app:
+  model:
+    provider: mock
+    fallback-provider: none

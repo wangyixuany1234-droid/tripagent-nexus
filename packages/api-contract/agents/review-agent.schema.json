@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/review-agent.schema.json",
+  "title": "ReviewAgent Contract",
+  "x-agent-card": {
+    "name": "ReviewAgent",
+    "description": "Reviews time, route, opening-hours, budget, and evidence consistency.",
+    "version": "1.0.0",
+    "skills": ["route_calculate", "opening_hours", "budget_validate"],
+    "timeoutMs": 30000,
+    "retry": { "maxAttempts": 2, "initialBackoffMs": 200 },
+    "errorCodes": [
+      "REVIEW_INPUT_INVALID",
+      "REVIEW_OUTPUT_INVALID",
+      "REVIEW_EVIDENCE_INSUFFICIENT",
+      "REVIEW_TIMEOUT"
+    ],
+    "allowDegraded": false,
+    "promptTemplateVersion": "review-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "candidatePlan"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "candidatePlan": { "type": "object" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["valid", "reviewedPlanVersion", "issues"],
+      "properties": {
+        "valid": { "type": "boolean" },
+        "reviewedPlanVersion": { "type": "integer", "minimum": 1 },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "severity", "message"],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]+$"
+              },
+              "severity": { "enum": ["ERROR", "WARNING", "INFO"] },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "ReviewAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,1 @@
+"""Cross-Encoder reranking boundary."""

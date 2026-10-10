@@ -1,0 +1,1527 @@
+asyncapi: 2.6.0
+id: urn:tripagent:nexus:kafka-events
+info:
+  title: TripAgent Nexus Kafka Events
+  version: 0.8.0
+  description: |
+    Contract for asynchronous document parsing, retrieval, multi-Agent planning,
+    deterministic validation, terminal task events, and dead-letter replay.
+    Delivery is at least once. Consumers must deduplicate by `eventId` and make
+    side effects idempotent by `idempotencyKey`. Every event carries an explicit
+    event version plus `correlationId`, `causationId`, and `traceId`. Event payloads
+    contain references and bounded context only; raw images and full Prompt text
+    are forbidden. Agent task payloads map to official A2A Message, Task, and
+    DataPart semantics; Agent-to-Tool calls use the official MCP protocol and are
+    therefore not represented as REST operations in this contract.
+  license:
+    name: Proprietary
+  contact:
+    name: TripAgent Nexus Engineering
+    url: https://tripagent.example
+    email: engineering@tripagent.example
+tags:
+  - name: documents
+    description: Uploaded document parsing lifecycle
+  - name: planning
+    description: Multi-Agent planning and validation lifecycle
+  - name: governance
+    description: Retry, terminal failure, and dead-letter lifecycle
+defaultContentType: application/json
+x-json-schema-contracts:
+  kafkaEvent: ./events/kafka-event.schema.json
+  mcpTools: ./mcp-tools.schema.json
+  a2aMessage: ./a2a-message.schema.json
+
+servers:
+  localKafka:
+    url: kafka:9092
+    protocol: kafka
+    description: Internal Kafka cluster; production requires TLS and workload identity
+    bindings:
+      kafka:
+        schemaRegistryUrl: http://schema-registry:8081
+        bindingVersion: 0.5.0
+
+channels:
+  document.parse.requested:
+    description: A document has been accepted and requires OCR/multimodal parsing.
+    bindings:
+      kafka:
+        topic: document.parse.requested
+        partitions: 12
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishDocumentParseRequested
+      summary: Spring outbox publishes parse work
+      message:
+        $ref: "#/components/messages/DocumentParseRequested"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumeDocumentParseRequested
+      summary: Spring parser adapter consumes work and calls the private AI API
+      message:
+        $ref: "#/components/messages/DocumentParseRequested"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+            const: trip-agent-document-parser-adapter-v1
+          clientId:
+            type: string
+          bindingVersion: 0.5.0
+
+  document.parse.completed:
+    description: Document parsing reached a terminal parse result.
+    bindings:
+      kafka:
+        topic: document.parse.completed
+        partitions: 12
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishDocumentParseCompleted
+      summary: AI parser publishes a typed parse result reference
+      message:
+        $ref: "#/components/messages/DocumentParseCompleted"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumeDocumentParseCompleted
+      summary: Spring persists extraction state idempotently
+      message:
+        $ref: "#/components/messages/DocumentParseCompleted"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+            const: trip-agent-api-document-results-v1
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+
+  trip.plan.requested:
+    description: A validated planning command is ready for orchestration.
+    bindings:
+      kafka:
+        topic: trip.plan.requested
+        partitions: 24
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishPlanRequested
+      summary: Spring command transaction publishes planning work
+      message:
+        $ref: "#/components/messages/PlanRequested"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumePlanRequested
+      summary: Spring orchestrator starts or resumes the task DAG
+      message:
+        $ref: "#/components/messages/PlanRequested"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+            const: trip-agent-orchestrator-v1
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+
+  retrieval.requested:
+    description: A bounded public-knowledge and user-memory retrieval request.
+    bindings:
+      kafka:
+        topic: retrieval.requested
+        partitions: 24
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishRetrievalRequested
+      summary: Orchestrator requests evidence retrieval
+      message:
+        $ref: "#/components/messages/RetrievalRequested"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumeRetrievalRequested
+      summary: Retrieval workers process bounded reference-only context
+      message:
+        $ref: "#/components/messages/RetrievalRequested"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+            const: trip-agent-retrieval-v1
+          clientId:
+            type: string
+          bindingVersion: 0.5.0
+
+  agent.task.requested:
+    description: One authorized, typed Agent delegation is ready.
+    bindings:
+      kafka:
+        topic: agent.task.requested
+        partitions: 48
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishAgentTaskRequested
+      summary: Spring orchestrator delegates an Agent task
+      message:
+        $ref: "#/components/messages/AgentTaskRequested"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumeAgentTaskRequested
+      summary: Authorized Agent workers consume task delegations
+      message:
+        $ref: "#/components/messages/AgentTaskRequested"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+          clientId:
+            type: string
+          bindingVersion: 0.5.0
+
+  agent.task.completed:
+    description: One Agent task attempt produced a terminal typed outcome.
+    bindings:
+      kafka:
+        topic: agent.task.completed
+        partitions: 48
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishAgentTaskCompleted
+      summary: Agent worker publishes result or failure
+      message:
+        $ref: "#/components/messages/AgentTaskCompleted"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumeAgentTaskCompleted
+      summary: Spring orchestrator validates and persists the result
+      message:
+        $ref: "#/components/messages/AgentTaskCompleted"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+            const: trip-agent-orchestrator-agent-results-v1
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+
+  plan.review.requested:
+    description: Candidate versions are ready for semantic review and deterministic Java validation.
+    bindings:
+      kafka:
+        topic: plan.review.requested
+        partitions: 24
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishPlanValidationRequested
+      summary: Orchestrator schedules deterministic validation
+      message:
+        $ref: "#/components/messages/PlanValidationRequested"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumePlanValidationRequested
+      summary: Java validation worker checks all hard rules
+      message:
+        $ref: "#/components/messages/PlanValidationRequested"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+            const: trip-plan-validator-v1
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+
+  plan.completed:
+    description: Planning reached COMPLETED or PARTIALLY_COMPLETED.
+    bindings:
+      kafka:
+        topic: plan.completed
+        partitions: 24
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishPlanCompleted
+      summary: Orchestrator publishes candidate availability
+      message:
+        $ref: "#/components/messages/PlanCompleted"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumePlanCompleted
+      summary: Progress/evaluation projections consume terminal success
+      message:
+        $ref: "#/components/messages/PlanCompleted"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+          clientId:
+            type: string
+          bindingVersion: 0.5.0
+
+  task.failed:
+    description: Any asynchronous task reached FAILED with a stable sanitized reason.
+    bindings:
+      kafka:
+        topic: task.failed
+        partitions: 24
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishPlanFailed
+      summary: Orchestrator publishes terminal failure
+      message:
+        $ref: "#/components/messages/PlanFailed"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumePlanFailed
+      summary: Progress/evaluation projections consume terminal failure
+      message:
+        $ref: "#/components/messages/PlanFailed"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+          clientId:
+            type: string
+          bindingVersion: 0.5.0
+
+  dead-letter:
+    description: Exhausted or non-retryable events retained for protected manual replay.
+    bindings:
+      kafka:
+        topic: dead-letter
+        partitions: 12
+        replicas: 3
+        bindingVersion: 0.5.0
+    publish:
+      operationId: publishDeadLetter
+      summary: Kafka recovery publishes a sanitized dead-letter envelope
+      message:
+        $ref: "#/components/messages/DeadLetter"
+      bindings:
+        kafka:
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+    subscribe:
+      operationId: consumeDeadLetter
+      summary: Governance projection persists replayable dead letters
+      message:
+        $ref: "#/components/messages/DeadLetter"
+      bindings:
+        kafka:
+          groupId:
+            type: string
+            const: trip-agent-dead-letter-v1
+          clientId:
+            type: string
+            const: trip-agent-api
+          bindingVersion: 0.5.0
+
+components:
+  messages:
+    DocumentParseRequested:
+      name: DocumentParseRequested
+      title: Document parse requested
+      summary: A private upload requires OCR/multimodal parsing.
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/DocumentParseRequestedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: tripId
+          bindingVersion: 0.5.0
+      examples:
+        - payload:
+            eventId: 018f0e31-6ec8-7a59-b871-0242ac120001
+            eventType: document.parse.requested
+            schemaVersion: 1.0.0
+            occurredAt: "2026-09-03T06:30:00Z"
+            correlationId: 018f0e31-6ec8-7a59-b871-0242ac120003
+            causationId: 018f0e31-6ec8-7a59-b871-0242ac120003
+            traceId: 4bf92f3577b34da6a3ce929d0e0e4736
+            tripId: 018f0e31-6ec8-7a59-b871-0242ac120002
+            taskId: 018f0e31-6ec8-7a59-b871-0242ac120003
+            idempotencyKey: document-parse-018f0e31-attempt-1
+            payload:
+              documentId: 018f0e31-6ec8-7a59-b871-0242ac120004
+              documentType: BOOKING
+              mediaType: image/jpeg
+              sizeBytes: 420001
+              sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+              sourceRef: object://trip-upload/opaque-reference
+              locale: zh-CN
+              parserSchemaVersion: 1.0.0
+
+    DocumentParseCompleted:
+      name: DocumentParseCompleted
+      title: Document parse completed
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/DocumentParseCompletedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: tripId
+          bindingVersion: 0.5.0
+
+    PlanRequested:
+      name: PlanRequested
+      title: Plan requested
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/PlanRequestedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: taskId
+          bindingVersion: 0.5.0
+
+    RetrievalRequested:
+      name: RetrievalRequested
+      title: Retrieval requested
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/RetrievalRequestedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: taskId
+          bindingVersion: 0.5.0
+
+    AgentTaskRequested:
+      name: AgentTaskRequested
+      title: Agent task requested
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/AgentTaskRequestedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: taskId
+          bindingVersion: 0.5.0
+
+    AgentTaskCompleted:
+      name: AgentTaskCompleted
+      title: Agent task completed
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/AgentTaskCompletedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: taskId
+          bindingVersion: 0.5.0
+
+    PlanValidationRequested:
+      name: PlanValidationRequested
+      title: Plan validation requested
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/PlanValidationRequestedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: taskId
+          bindingVersion: 0.5.0
+
+    PlanCompleted:
+      name: PlanCompleted
+      title: Plan completed
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/PlanCompletedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: taskId
+          bindingVersion: 0.5.0
+
+    PlanFailed:
+      name: PlanFailed
+      title: Plan failed
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/PlanFailedEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: taskId
+          bindingVersion: 0.5.0
+
+    DeadLetter:
+      name: DeadLetter
+      title: Dead-letter event
+      contentType: application/json
+      correlationId:
+        location: $message.payload#/correlationId
+      headers:
+        $ref: "#/components/schemas/TraceHeaders"
+      payload:
+        $ref: "#/components/schemas/DeadLetterEvent"
+      bindings:
+        kafka:
+          key:
+            type: string
+            format: uuid
+            description: original eventId
+          bindingVersion: 0.5.0
+
+  schemas:
+    TraceHeaders:
+      type: object
+      additionalProperties: false
+      required: [traceparent]
+      properties:
+        traceparent:
+          type: string
+          pattern: '^[\da-f]{2}-[\da-f]{32}-[\da-f]{16}-[\da-f]{2}$'
+        tracestate:
+          type: string
+          maxLength: 512
+        baggage:
+          type: string
+          maxLength: 1024
+
+    EventEnvelope:
+      type: object
+      x-max-serialized-bytes: 262144
+      description: |
+        Versioned reference-only envelope. Payloads must not contain raw image
+        bytes, Authorization headers, API keys, or complete Prompt text.
+      required:
+        - eventId
+        - eventType
+        - schemaVersion
+        - occurredAt
+        - correlationId
+        - causationId
+        - traceId
+        - tripId
+        - taskId
+        - idempotencyKey
+        - payload
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+          minLength: 1
+          maxLength: 200
+        schemaVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        occurredAt:
+          type: string
+          format: date-time
+          description: RFC 3339 instant normalized to UTC
+        correlationId:
+          type: string
+          format: uuid
+          description: Stable identifier shared by the complete asynchronous workflow
+        causationId:
+          type: string
+          format: uuid
+          description: Event or command identifier that directly caused this event
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        tripId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+          description: Document-processing or planning task identifier
+        idempotencyKey:
+          type: string
+          minLength: 16
+          maxLength: 128
+          pattern: "^[A-Za-z0-9._:-]+$"
+        payload:
+          type: object
+
+    DocumentParseRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: document.parse.requested
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/DocumentParseRequestedPayload"
+    DocumentParseRequestedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          documentId,
+          documentType,
+          mediaType,
+          sizeBytes,
+          sha256,
+          sourceRef,
+          locale,
+          parserSchemaVersion,
+        ]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        documentType:
+          type: string
+          enum: [BOOKING, TICKET, HOTEL, ATTRACTION, NOTE, UNKNOWN]
+        mediaType:
+          type: string
+          maxLength: 200
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        sourceRef:
+          type: string
+          maxLength: 500
+          description: Opaque private object reference, not a browser URL
+        locale:
+          type: string
+          maxLength: 35
+        parserSchemaVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+
+    DocumentParseCompletedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: document.parse.completed
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/DocumentParseCompletedPayload"
+    DocumentParseCompletedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        [documentId, parseStatus, extractionIds, parserVersion, warnings]
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        parseStatus:
+          type: string
+          enum: [PARSED, NEEDS_CONFIRMATION, FAILED]
+        extractionIds:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            format: uuid
+        parserVersion:
+          type: string
+          maxLength: 100
+        warnings:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/EventIssue"
+        failure:
+          $ref: "#/components/schemas/EventFailure"
+
+    PlanRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: trip.plan.requested
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/PlanRequestedPayload"
+    PlanRequestedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          planId,
+          taskType,
+          requestKind,
+          requirementVersion,
+          contextVersion,
+          candidateTarget,
+          strategyPreferences,
+          requestedAt,
+        ]
+      properties:
+        planId:
+          type: string
+          format: uuid
+        taskType:
+          type: string
+          enum: [PLAN_GENERATION, PLAN_REPLAN]
+        requestKind:
+          type: string
+          enum: [CREATE, USER_REPLAN, AUTO_REPLAN]
+        requirementVersion:
+          type: integer
+          minimum: 1
+        contextVersion:
+          type: integer
+          minimum: 1
+        candidateTarget:
+          type: integer
+          minimum: 2
+          maximum: 5
+        strategyPreferences:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum: [BUDGET, BALANCED, COMFORT, LOW_TRANSIT, CUSTOM]
+        baseItineraryVersionId:
+          type: string
+          format: uuid
+        lockedItemIds:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        removedItemIds:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        adjustedTotalBudget:
+          $ref: "#/components/schemas/Money"
+        adjustedPace:
+          type: string
+          enum: [RELAXED, BALANCED, INTENSIVE]
+        addedPreferences:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 200
+        naturalLanguageRequest:
+          type: string
+          maxLength: 5000
+        retryOfTaskId:
+          type: string
+          format: uuid
+        requestedAt:
+          type: string
+          format: date-time
+
+    RetrievalRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: retrieval.requested
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/RetrievalRequestedPayload"
+    RetrievalRequestedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          queryRef,
+          city,
+          travelDate,
+          language,
+          includePublicKnowledge,
+          includeUserMemory,
+          includeGraph,
+          maxResults,
+        ]
+      properties:
+        queryRef:
+          type: string
+          maxLength: 500
+          description: Opaque reference or bounded normalized query, never a full Prompt
+        city:
+          type: string
+          maxLength: 200
+        travelDate:
+          type: string
+          format: date
+        language:
+          type: string
+          maxLength: 35
+        includePublicKnowledge:
+          type: boolean
+        includeUserMemory:
+          type: boolean
+        includeGraph:
+          type: boolean
+        maxResults:
+          type: integer
+          minimum: 1
+          maximum: 100
+
+    AgentTaskRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: agent.task.requested
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/AgentTaskRequestedPayload"
+    AgentTaskRequestedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - agentTaskId
+        - messageId
+        - contextId
+        - agentName
+        - attempt
+        - inputSchemaVersion
+        - outputSchemaId
+        - outputSchemaVersion
+        - skillAllowlist
+        - context
+        - input
+        - deadlineAt
+      properties:
+        agentTaskId:
+          type: string
+          format: uuid
+          description: A2A Task identifier
+        messageId:
+          type: string
+          format: uuid
+          description: A2A Message identifier
+        contextId:
+          type: string
+          format: uuid
+          description: A2A conversation context identifier
+        parentAgentTaskId:
+          type: string
+          format: uuid
+        agentName:
+          $ref: "#/components/schemas/AgentName"
+        attempt:
+          type: integer
+          minimum: 1
+        inputSchemaVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        outputSchemaId:
+          type: string
+          pattern: "^[a-z][a-z0-9.-]{1,99}$"
+        outputSchemaVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        skillAllowlist:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            $ref: "#/components/schemas/McpToolName"
+        context:
+          $ref: "#/components/schemas/ContextEnvelope"
+        input:
+          type: object
+          maxProperties: 50
+          description: |
+            Bounded Agent-specific input validated against inputSchemaVersion.
+            Full Prompt templates and unbounded history are forbidden.
+        deadlineAt:
+          type: string
+          format: date-time
+
+    AgentTaskCompletedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: agent.task.completed
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/AgentTaskCompletedPayload"
+    AgentTaskCompletedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - agentName
+        - attempt
+        - status
+        - result
+        - evidence
+        - warnings
+        - traceId
+        - resultSchemaVersion
+      properties:
+        taskId:
+          type: string
+          format: uuid
+          description: A2A Task identifier
+        agentName:
+          $ref: "#/components/schemas/AgentName"
+        attempt:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [SUCCEEDED, DEGRADED, FAILED, TIMEOUT, SKIPPED]
+        result:
+          type: object
+          description: Agent-specific result validated before A2A artifact emission
+        resultSchemaVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        evidence:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/AgentEvidence"
+        warnings:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/EventIssue"
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        modelMetadata:
+          $ref: "#/components/schemas/ModelMetadata"
+        failure:
+          $ref: "#/components/schemas/EventFailure"
+
+    PlanValidationRequestedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: plan.review.requested
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/PlanValidationRequestedPayload"
+    PlanValidationRequestedPayload:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          requirementVersion,
+          itineraryVersionIds,
+          validatorBundleVersion,
+          autoReplanAttempt,
+          requestedAt,
+        ]
+      properties:
+        requirementVersion:
+          type: integer
+          minimum: 1
+        itineraryVersionIds:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        validatorBundleVersion:
+          type: string
+          maxLength: 100
+        autoReplanAttempt:
+          type: integer
+          minimum: 0
+          maximum: 1
+        requestedAt:
+          type: string
+          format: date-time
+
+    PlanCompletedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: plan.completed
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/PlanCompletedPayload"
+    PlanCompletedPayload:
+      type: object
+      additionalProperties: false
+      required: [completionStatus, candidates, gapCodes, completedAt]
+      properties:
+        completionStatus:
+          type: string
+          enum: [COMPLETED, PARTIALLY_COMPLETED]
+        candidates:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items:
+            $ref: "#/components/schemas/CompletedCandidate"
+        gapCodes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              [
+                SOURCE_UNAVAILABLE,
+                INSUFFICIENT_EVIDENCE,
+                CANDIDATE_TARGET_NOT_MET,
+              ]
+        completedAt:
+          type: string
+          format: date-time
+    CompletedCandidate:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          planId,
+          planFamilyId,
+          itineraryVersionId,
+          version,
+          candidateKey,
+          strategy,
+          validationStatus,
+          totalAmount,
+        ]
+      properties:
+        planId:
+          type: string
+          format: uuid
+        planFamilyId:
+          type: string
+          format: uuid
+        itineraryVersionId:
+          type: string
+          format: uuid
+        previousPlanId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        candidateKey:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{1,39}$"
+        strategy:
+          type: string
+          enum: [BUDGET, BALANCED, COMFORT, LOW_TRANSIT, CUSTOM]
+        validationStatus:
+          type: string
+          enum: [VALID, VALID_WITH_WARNINGS]
+        totalAmount:
+          $ref: "#/components/schemas/Money"
+
+    PlanFailedEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: task.failed
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/PlanFailedPayload"
+    PlanFailedPayload:
+      type: object
+      additionalProperties: false
+      required: [failedStage, failure, failedAt]
+      properties:
+        failedStage:
+          type: string
+          enum:
+            [PARSING, RETRIEVING, PLANNING, VALIDATING, WAITING_CONFIRMATION]
+        agentTaskId:
+          type: string
+          format: uuid
+        failure:
+          $ref: "#/components/schemas/EventFailure"
+        failedAt:
+          type: string
+          format: date-time
+
+    DeadLetterEvent:
+      allOf:
+        - $ref: "#/components/schemas/EventEnvelope"
+        - type: object
+          required: [eventType, schemaVersion, payload]
+          properties:
+            eventType:
+              type: string
+              const: dead-letter
+            schemaVersion:
+              type: string
+              const: 1.0.0
+            payload:
+              $ref: "#/components/schemas/DeadLetterPayload"
+    DeadLetterPayload:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          originalEventId,
+          originalEventType,
+          originalTopic,
+          originalEventKey,
+          originalSchemaVersion,
+          failure,
+          exhaustedAttempts,
+          failedAt,
+        ]
+      properties:
+        originalEventId:
+          type: string
+          format: uuid
+        originalEventType:
+          type: string
+          maxLength: 200
+        originalTopic:
+          type: string
+          maxLength: 200
+        originalEventKey:
+          type: string
+          maxLength: 200
+        originalSchemaVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        failure:
+          $ref: "#/components/schemas/EventFailure"
+        exhaustedAttempts:
+          type: integer
+          minimum: 1
+        failedAt:
+          type: string
+          format: date-time
+
+    AgentName:
+      type: string
+      enum:
+        [
+          RequirementAgent,
+          ResearchAgent,
+          TransportAgent,
+          AccommodationAgent,
+          RecommendationAgent,
+          BudgetAgent,
+          ReviewAgent,
+          CoordinatorAgent,
+        ]
+    McpToolName:
+      type: string
+      enum:
+        [
+          place_search,
+          weather_query,
+          route_calculate,
+          exchange_rate,
+          opening_hours,
+          booking_parse,
+          budget_validate,
+          itinerary_store,
+        ]
+    ContextEnvelope:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          systemRules,
+          userConstraints,
+          parsedBookings,
+          retrievedEvidence,
+          toolResults,
+          agentResults,
+          planVersion,
+          tokenBudget,
+          privacyLabels,
+        ]
+      properties:
+        systemRules:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 1000
+        userConstraints:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ContextConstraint"
+        parsedBookings:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ContextBooking"
+        retrievedEvidence:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/AgentEvidence"
+        toolResults:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ContextToolResult"
+        agentResults:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ContextAgentResult"
+        planVersion:
+          type: integer
+          minimum: 1
+        tokenBudget:
+          type: integer
+          minimum: 256
+          maximum: 200000
+        privacyLabels:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/PrivacyLabel"
+    ContextConstraint:
+      type: object
+      additionalProperties: false
+      required: [constraintId, kind, statement, protectedFromSummarization]
+      properties:
+        constraintId:
+          type: string
+          maxLength: 100
+        kind:
+          type: string
+          enum: [HARD, SOFT]
+        statement:
+          type: string
+          maxLength: 1000
+        protectedFromSummarization:
+          type: boolean
+    ContextBooking:
+      type: object
+      additionalProperties: false
+      required: [bookingId, bookingType, startTime, endTime, confirmed, summary]
+      properties:
+        bookingId:
+          type: string
+          format: uuid
+        bookingType:
+          type: string
+          enum: [FLIGHT, HOTEL, TICKET, TRAIN, OTHER]
+        startTime:
+          type: [string, "null"]
+          format: date-time
+        endTime:
+          type: [string, "null"]
+          format: date-time
+        amount:
+          type: [number, "null"]
+          minimum: 0
+        currency:
+          type: [string, "null"]
+          pattern: "^[A-Z]{3}$"
+        confirmed:
+          type: boolean
+        summary:
+          type: string
+          maxLength: 1000
+    AgentEvidence:
+      type: object
+      additionalProperties: false
+      required:
+        [sourceId, sourceType, title, excerpt, relevanceScore, fromRealtimeTool]
+      properties:
+        sourceId:
+          type: string
+          maxLength: 200
+        sourceType:
+          type: string
+          maxLength: 100
+        title:
+          type: string
+          maxLength: 500
+        excerpt:
+          type: string
+          maxLength: 3000
+        relevanceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        fromRealtimeTool:
+          type: boolean
+    ContextToolResult:
+      type: object
+      additionalProperties: false
+      required: [toolName, status, result]
+      properties:
+        toolName:
+          $ref: "#/components/schemas/McpToolName"
+        status:
+          type: string
+          enum: [SUCCEEDED, UNAVAILABLE, FAILED]
+        result:
+          type: object
+    ContextAgentResult:
+      type: object
+      additionalProperties: false
+      required: [taskId, agentName, status, result]
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        agentName:
+          $ref: "#/components/schemas/AgentName"
+        status:
+          type: string
+          enum: [SUCCEEDED, DEGRADED, FAILED, TIMEOUT, SKIPPED]
+        result:
+          type: object
+    PrivacyLabel:
+      type: object
+      additionalProperties: false
+      required: [jsonPointer, classification, allowedAgents]
+      properties:
+        jsonPointer:
+          type: string
+          description: RFC 6901 JSON Pointer
+        classification:
+          type: string
+          enum: [PUBLIC, INTERNAL, PERSONAL, SENSITIVE]
+        allowedAgents:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/AgentName"
+    EventIssue:
+      type: object
+      additionalProperties: false
+      required: [code, severity, message]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        severity:
+          type: string
+          enum: [ERROR, WARNING, INFO]
+        field:
+          type: string
+          description: RFC 6901 JSON Pointer
+        message:
+          type: string
+          maxLength: 500
+    EventFailure:
+      type: object
+      additionalProperties: false
+      required: [code, message, retryable, details]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        message:
+          type: string
+          maxLength: 1000
+        retryable:
+          type: boolean
+        details:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/EventIssue"
+    ModelMetadata:
+      type: object
+      additionalProperties: false
+      required: [provider, model, latencyMs, inputTokens, outputTokens]
+      properties:
+        provider:
+          type: string
+          const: DEEPSEEK
+        model:
+          type: string
+          maxLength: 200
+        latencyMs:
+          type: integer
+          format: int64
+          minimum: 0
+        inputTokens:
+          type: integer
+          minimum: 0
+        outputTokens:
+          type: integer
+          minimum: 0
+        finishReason:
+          type: string
+          maxLength: 100
+    Money:
+      type: object
+      additionalProperties: false
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+          pattern: '^-?\d{1,15}(\.\d{1,4})?$'
+        currency:
+          type: string
+          pattern: "^[A-Z]{3}$"

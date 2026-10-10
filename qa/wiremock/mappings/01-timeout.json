@@ -1,0 +1,22 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "ANY",
+    "urlPathPattern": "/(maps/.*|tools/(weather|exchange-rate|route))",
+    "headers": {
+      "X-QA-Scenario": {
+        "equalTo": "timeout"
+      }
+    }
+  },
+  "response": {
+    "status": 200,
+    "fixedDelayMilliseconds": 3000,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "status": "synthetic-delayed-response"
+    }
+  }
+}

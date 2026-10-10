@@ -1,0 +1,21 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "urlPath": "/tools/route"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "providerMode": "MOCK",
+      "origin": "Synthetic origin",
+      "destination": "Synthetic destination",
+      "durationMinutes": 45,
+      "estimatedCost": "12.0000",
+      "currency": "CNY"
+    }
+  }
+}

@@ -1,0 +1,2 @@
+This is an intentionally invalid synthetic JPEG fixture.
+It has a permitted extension but no JPEG magic bytes and must be rejected before OCR.

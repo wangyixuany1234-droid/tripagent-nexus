@@ -1,0 +1,77 @@
+{
+  "version": "phase-9-v1",
+  "cases": [
+    {
+      "caseId": "normal-beijing-three-day",
+      "category": "ITINERARY",
+      "scenario": "NORMAL_BEIJING",
+      "expectedCodes": []
+    },
+    {
+      "caseId": "cross-city-travel",
+      "category": "ITINERARY",
+      "scenario": "CROSS_CITY",
+      "expectedCodes": []
+    },
+    {
+      "caseId": "insufficient-budget",
+      "category": "RULE_ENGINE",
+      "scenario": "BUDGET_INSUFFICIENT",
+      "expectedCodes": ["TOTAL_BUDGET_EXCEEDED"]
+    },
+    {
+      "caseId": "hotel-date-conflict",
+      "category": "RULE_ENGINE",
+      "scenario": "HOTEL_DATE_CONFLICT",
+      "expectedCodes": ["HOTEL_CHECKIN_TIME_CONFLICT"]
+    },
+    {
+      "caseId": "attraction-closed",
+      "category": "RULE_ENGINE",
+      "scenario": "ATTRACTION_CLOSED",
+      "expectedCodes": ["ATTRACTION_OUTSIDE_OPENING_HOURS"]
+    },
+    {
+      "caseId": "user-preference-conflict",
+      "category": "RULE_ENGINE",
+      "scenario": "PREFERENCE_CONFLICT",
+      "expectedCodes": ["PREFERENCE_CONFLICT"]
+    },
+    {
+      "caseId": "ocr-missing-fields",
+      "category": "OCR",
+      "scenario": "OCR_MISSING_FIELDS",
+      "expectedCodes": ["LOW_CONFIDENCE_CRITICAL_FIELD"]
+    },
+    {
+      "caseId": "duplicate-order",
+      "category": "OCR",
+      "scenario": "DUPLICATE_ORDER",
+      "expectedCodes": ["DUPLICATE_CONFIRMATION"]
+    },
+    {
+      "caseId": "tool-timeout",
+      "category": "TOOL",
+      "scenario": "TOOL_TIMEOUT",
+      "expectedCodes": ["EXTERNAL_CALL_TIMEOUT"]
+    },
+    {
+      "caseId": "insufficient-evidence",
+      "category": "RAG",
+      "scenario": "INSUFFICIENT_EVIDENCE",
+      "expectedCodes": ["RECOMMENDATION_EVIDENCE_MISSING"]
+    },
+    {
+      "caseId": "invalid-agent-output",
+      "category": "AGENT_SCHEMA",
+      "scenario": "INVALID_AGENT_OUTPUT",
+      "expectedCodes": ["AGENT_OUTPUT_INVALID"]
+    },
+    {
+      "caseId": "prompt-injection",
+      "category": "GUARDRAIL",
+      "scenario": "PROMPT_INJECTION",
+      "expectedCodes": ["PROMPT_INJECTION_DETECTED"]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+# Secrets and local overrides
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.jks
+secrets/
+
+# Java and Maven
+target/
+*.class
+.mvn/timing.properties
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.schemathesis/
+.mypy_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Frontend build and test artifacts
+node_modules/
+.npm-cache/
+dist/
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+qa/reports/*
+!qa/reports/.gitkeep
+output/test-results/*
+!output/test-results/.gitkeep
+**/output/test-results/*
+
+# Local data and tooling
+data/
+.c/
+.runtime/
+.runtime-home/
+.idea/
+.vscode/
+.DS_Store
+*.log

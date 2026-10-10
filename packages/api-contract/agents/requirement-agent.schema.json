@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/requirement-agent.schema.json",
+  "title": "RequirementAgent Contract",
+  "x-agent-card": {
+    "name": "RequirementAgent",
+    "description": "Normalizes travel requirements without weakening hard constraints.",
+    "version": "1.0.0",
+    "skills": ["booking_parse"],
+    "timeoutMs": 20000,
+    "retry": { "maxAttempts": 2, "initialBackoffMs": 200 },
+    "errorCodes": [
+      "REQUIREMENT_INPUT_INVALID",
+      "REQUIREMENT_OUTPUT_INVALID",
+      "REQUIREMENT_MODEL_UNAVAILABLE"
+    ],
+    "allowDegraded": false,
+    "promptTemplateVersion": "requirement-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "requestText"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "requestText": { "type": "string", "minLength": 1, "maxLength": 5000 }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "origin",
+        "destinations",
+        "startDate",
+        "endDate",
+        "budgetLimit",
+        "currency",
+        "hardConstraints",
+        "softConstraints",
+        "ambiguities"
+      ],
+      "properties": {
+        "origin": { "type": "string", "minLength": 1 },
+        "destinations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "budgetLimit": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "hardConstraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "softConstraints": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "ambiguities": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "RequirementAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

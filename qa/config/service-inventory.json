@@ -1,0 +1,135 @@
+{
+  "schemaVersion": 1,
+  "composeFiles": [
+    "compose.yaml",
+    "qa/compose.qa.yaml"
+  ],
+  "services": [
+    {
+      "name": "postgres",
+      "start": "docker compose",
+      "ports": [
+        "127.0.0.1:5432"
+      ],
+      "dependencies": [],
+      "healthCheck": "pg_isready",
+      "testProfile": "Testcontainers or QA Compose"
+    },
+    {
+      "name": "redis",
+      "start": "docker compose",
+      "ports": [
+        "127.0.0.1:6379"
+      ],
+      "dependencies": [],
+      "healthCheck": "redis-cli ping",
+      "testProfile": "Testcontainers or QA Compose"
+    },
+    {
+      "name": "kafka",
+      "start": "docker compose",
+      "ports": [
+        "127.0.0.1:9092"
+      ],
+      "dependencies": [],
+      "healthCheck": "kafka-topics --list",
+      "testProfile": "Testcontainers or QA Compose"
+    },
+    {
+      "name": "neo4j",
+      "start": "docker compose",
+      "ports": [
+        "127.0.0.1:7474",
+        "127.0.0.1:7687"
+      ],
+      "dependencies": [],
+      "healthCheck": "cypher-shell RETURN 1",
+      "testProfile": "Testcontainers or in-memory graph"
+    },
+    {
+      "name": "jaeger",
+      "start": "docker compose",
+      "ports": [
+        "127.0.0.1:16686"
+      ],
+      "dependencies": [],
+      "healthCheck": "HTTP /",
+      "testProfile": "tracing disabled by default"
+    },
+    {
+      "name": "otel-collector",
+      "start": "docker compose",
+      "ports": [
+        "127.0.0.1:4317",
+        "127.0.0.1:4318",
+        "127.0.0.1:9464",
+        "127.0.0.1:13133"
+      ],
+      "dependencies": [
+        "jaeger"
+      ],
+      "healthCheck": "otelcol-contrib validate",
+      "testProfile": "tracing disabled by default"
+    },
+    {
+      "name": "ai-retrieval-service",
+      "start": "uvicorn trip_agent_ai.main:app or docker compose",
+      "ports": [
+        "127.0.0.1:8000"
+      ],
+      "dependencies": [
+        "neo4j",
+        "LanceDB"
+      ],
+      "healthCheck": "GET /internal/v1/health",
+      "testProfile": "APP_ENV=test, parser/retrieval mock, graph memory"
+    },
+    {
+      "name": "trip-agent-api",
+      "start": "mvn spring-boot:run or docker compose",
+      "ports": [
+        "127.0.0.1:8080"
+      ],
+      "dependencies": [
+        "postgres",
+        "redis",
+        "kafka",
+        "ai-retrieval-service"
+      ],
+      "healthCheck": "GET /actuator/health/readiness",
+      "testProfile": "test,mock-model"
+    },
+    {
+      "name": "web",
+      "start": "npm run dev or docker compose",
+      "ports": [
+        "127.0.0.1:5173"
+      ],
+      "dependencies": [
+        "trip-agent-api"
+      ],
+      "healthCheck": "GET /healthz",
+      "testProfile": "Playwright preview on 127.0.0.1:4173"
+    },
+    {
+      "name": "wiremock",
+      "start": "QA Compose",
+      "ports": [
+        "127.0.0.1:9099"
+      ],
+      "dependencies": [],
+      "healthCheck": "GET /__admin/health",
+      "testProfile": "static synthetic stubs"
+    },
+    {
+      "name": "toxiproxy",
+      "start": "QA Compose or Testcontainers",
+      "ports": [
+        "127.0.0.1:8474"
+      ],
+      "dependencies": [],
+      "healthCheck": "toxiproxy-cli list",
+      "testProfile": "local fault injection only"
+    }
+  ]
+}

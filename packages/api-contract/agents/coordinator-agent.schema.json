@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/coordinator-agent.schema.json",
+  "title": "CoordinatorAgent Contract",
+  "x-agent-card": {
+    "name": "CoordinatorAgent",
+    "description": "Discovers specialists, delegates tasks, and merges validated results.",
+    "version": "1.0.0",
+    "skills": ["itinerary_store"],
+    "timeoutMs": 120000,
+    "retry": { "maxAttempts": 1, "initialBackoffMs": 0 },
+    "errorCodes": [
+      "COORDINATOR_INPUT_INVALID",
+      "COORDINATOR_AGENT_UNAVAILABLE",
+      "COORDINATOR_DEADLINE_EXCEEDED",
+      "COORDINATOR_OUTPUT_INVALID"
+    ],
+    "allowDegraded": true,
+    "promptTemplateVersion": "coordinator-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "requestText"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "requestText": { "type": "string", "minLength": 1, "maxLength": 5000 }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completionStatus",
+        "delegatedTasks",
+        "alternatives",
+        "plan"
+      ],
+      "properties": {
+        "completionStatus": {
+          "enum": ["COMPLETED", "PARTIALLY_COMPLETED", "FAILED"]
+        },
+        "delegatedTasks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["taskId", "agentName", "status"],
+            "properties": {
+              "taskId": { "type": "string", "format": "uuid" },
+              "agentName": {
+                "$ref": "common.schema.json#/$defs/agentName"
+              },
+              "status": {
+                "enum": [
+                  "SUCCEEDED",
+                  "DEGRADED",
+                  "FAILED",
+                  "TIMEOUT",
+                  "SKIPPED"
+                ]
+              }
+            }
+          }
+        },
+        "alternatives": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["candidateKey", "strategy", "title", "summary"],
+            "properties": {
+              "candidateKey": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{1,39}$"
+              },
+              "strategy": {
+                "enum": [
+                  "BUDGET",
+                  "BALANCED",
+                  "COMFORT",
+                  "LOW_TRANSIT",
+                  "CUSTOM"
+                ]
+              },
+              "title": { "type": "string", "minLength": 1, "maxLength": 200 },
+              "summary": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000
+              }
+            }
+          }
+        },
+        "plan": { "type": "object" }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "CoordinatorAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/events/kafka-event.schema.json",
+  "title": "TripAgent Kafka Event Envelope",
+  "description": "Versioned, reference-only Kafka event envelope. Producers validate this strict schema before publishing.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "schemaVersion",
+    "occurredAt",
+    "correlationId",
+    "causationId",
+    "traceId",
+    "tripId",
+    "taskId",
+    "idempotencyKey",
+    "payload"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "eventType": {
+      "type": "string",
+      "enum": [
+        "document.parse.requested",
+        "document.parse.completed",
+        "trip.plan.requested",
+        "retrieval.requested",
+        "agent.task.requested",
+        "agent.task.completed",
+        "plan.review.requested",
+        "plan.completed",
+        "task.failed",
+        "dead-letter"
+      ]
+    },
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "causationId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "traceId": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "tripId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "taskId": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "payload": {
+      "type": "object"
+    }
+  },
+  "x-consumer-compatibility": {
+    "unknownOptionalFields": "ignore",
+    "unknownSchemaVersion": "dead-letter-without-retry"
+  }
+}

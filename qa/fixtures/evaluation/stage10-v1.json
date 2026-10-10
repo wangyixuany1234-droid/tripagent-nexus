@@ -1,0 +1,699 @@
+{
+  "schemaVersion": 1,
+  "version": "stage10-v1",
+  "classification": "synthetic",
+  "syntheticOnly": true,
+  "acceptancePolicy": "BASELINE_ONLY",
+  "repetitions": 3,
+  "random": {
+    "seed": 20260908,
+    "temperature": 0
+  },
+  "versions": {
+    "documentParserPrompt": "document-parser-1.0.0",
+    "queryAnalyzerPrompt": "query-analyzer-v1.0.0",
+    "rerankerPrompt": "reranker-v1.0.0",
+    "embeddingPrompt": "embedding-v1.0.0",
+    "javaEvaluationDataset": "phase-9-v1",
+    "model": "deepseek-chat",
+    "embeddingModel": "deepseek-embedding",
+    "agentPrompts": [
+      "requirement-v1.0.0",
+      "research-v1.0.0",
+      "transport-v1.0.0",
+      "accommodation-v1.0.0",
+      "recommendation-v1.0.0",
+      "budget-v1.0.0",
+      "review-v1.0.0",
+      "coordinator-v1.0.0"
+    ]
+  },
+  "retrievalParameters": {
+    "embeddingDimensions": 64,
+    "maxCandidates": 40,
+    "minimumRelevanceScore": 0.12,
+    "contextMaxCharacters": 6000,
+    "metricK": 5
+  },
+  "ocrCases": [
+    {
+      "id": "ocr-clear-hotel",
+      "scenario": "清晰截图",
+      "source": "documents/hotel-confirmation.png",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "identity"
+      },
+      "expectedBookings": [
+        {
+          "type": "HOTEL",
+          "provider": "Example Hotel",
+          "hotelName": "Shinjuku Central Hotel",
+          "hotelAddress": "1-2-3 Shinjuku, Tokyo",
+          "confirmationNumber": "HOTEL-20261001",
+          "startTime": "2026-10-01T07:00:00Z",
+          "endTime": "2026-10-05T02:00:00Z",
+          "travelerCount": 2,
+          "amount": "4500.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-blurred-hotel",
+      "scenario": "模糊截图",
+      "source": "documents/hotel-confirmation.png",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "gaussianBlur",
+        "radius": 3
+      },
+      "expectedBookings": [
+        {
+          "type": "HOTEL",
+          "provider": "Example Hotel",
+          "hotelName": "Shinjuku Central Hotel",
+          "hotelAddress": "1-2-3 Shinjuku, Tokyo",
+          "confirmationNumber": "HOTEL-20261001",
+          "startTime": "2026-10-01T07:00:00Z",
+          "endTime": "2026-10-05T02:00:00Z",
+          "travelerCount": 2,
+          "amount": "4500.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-tilted-flight",
+      "scenario": "倾斜图片",
+      "source": "documents/flight-confirmation.jpg",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "rotate",
+        "degrees": 12
+      },
+      "expectedBookings": [
+        {
+          "type": "FLIGHT",
+          "provider": "China Eastern",
+          "origin": "Shanghai Pudong",
+          "destination": "Tokyo Narita",
+          "transportNumber": "MU1234",
+          "confirmationNumber": "MU1234-20261001",
+          "startTime": "2026-10-01T01:00:00Z",
+          "endTime": "2026-10-01T04:00:00Z",
+          "travelerCount": 2,
+          "amount": "3600.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-dark-ticket",
+      "scenario": "深色模式",
+      "source": "documents/attraction-ticket.webp",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "darkMode"
+      },
+      "expectedBookings": [
+        {
+          "type": "TICKET",
+          "provider": "Tokyo Museum",
+          "destination": "Tokyo Museum",
+          "confirmationNumber": "TICKET-20261003",
+          "startTime": "2026-10-03T02:00:00Z",
+          "endTime": "2026-10-03T05:00:00Z",
+          "travelerCount": 2,
+          "amount": "240.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-multilingual-hotel",
+      "scenario": "多语言",
+      "source": "documents/hotel-confirmation.png",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "multilingualOverlay",
+        "text": "酒店确认 / HOTEL CONFIRMATION / 東京"
+      },
+      "expectedBookings": [
+        {
+          "type": "HOTEL",
+          "provider": "Example Hotel",
+          "hotelName": "Shinjuku Central Hotel",
+          "hotelAddress": "1-2-3 Shinjuku, Tokyo",
+          "confirmationNumber": "HOTEL-20261001",
+          "startTime": "2026-10-01T07:00:00Z",
+          "endTime": "2026-10-05T02:00:00Z",
+          "travelerCount": 2,
+          "amount": "4500.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-occluded-hotel",
+      "scenario": "遮挡",
+      "source": "documents/hotel-confirmation.png",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "occlude",
+        "box": [
+          60,
+          405,
+          430,
+          460
+        ]
+      },
+      "expectedBookings": [
+        {
+          "type": "HOTEL",
+          "provider": "Example Hotel",
+          "hotelName": "Shinjuku Central Hotel",
+          "hotelAddress": "1-2-3 Shinjuku, Tokyo",
+          "confirmationNumber": "HOTEL-20261001",
+          "startTime": "2026-10-01T07:00:00Z",
+          "endTime": "2026-10-05T02:00:00Z",
+          "travelerCount": 2,
+          "amount": "4500.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-multi-order-flight-ticket",
+      "scenario": "多订单同图",
+      "sources": [
+        "documents/flight-confirmation.jpg",
+        "documents/attraction-ticket.webp"
+      ],
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "stackVertical"
+      },
+      "expectedBookings": [
+        {
+          "type": "FLIGHT",
+          "provider": "China Eastern",
+          "origin": "Shanghai Pudong",
+          "destination": "Tokyo Narita",
+          "transportNumber": "MU1234",
+          "confirmationNumber": "MU1234-20261001",
+          "startTime": "2026-10-01T01:00:00Z",
+          "endTime": "2026-10-01T04:00:00Z",
+          "travelerCount": 2,
+          "amount": "3600.0000",
+          "currency": "CNY"
+        },
+        {
+          "type": "TICKET",
+          "provider": "Tokyo Museum",
+          "destination": "Tokyo Museum",
+          "confirmationNumber": "TICKET-20261003",
+          "startTime": "2026-10-03T02:00:00Z",
+          "endTime": "2026-10-03T05:00:00Z",
+          "travelerCount": 2,
+          "amount": "240.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-missing-fields",
+      "scenario": "缺少字段",
+      "source": "documents/low-confidence.png",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "identity"
+      },
+      "expectedBookings": [
+        {
+          "type": "HOTEL",
+          "provider": "Example Hotel",
+          "hotelName": "Shinjuku Central Hotel",
+          "hotelAddress": "1-2-3 Shinjuku, Tokyo",
+          "confirmationNumber": "HOTEL-NO-DATE",
+          "travelerCount": 2,
+          "amount": "4500.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [
+        "startTime",
+        "endTime"
+      ],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-abnormal-format-hotel",
+      "scenario": "格式异常",
+      "source": "documents/hotel-confirmation.png",
+      "mediaType": "image/png",
+      "locale": "en-US",
+      "transform": {
+        "kind": "abnormalFormat",
+        "lines": [
+          "HOTEL:::Shinjuku Central Hotel",
+          "DATE=01/OCT/2026 -> 05/OCT/2026",
+          "AMOUNT CNY 4,500.00",
+          "CONF# HOTEL-20261001"
+        ]
+      },
+      "expectedBookings": [
+        {
+          "type": "HOTEL",
+          "provider": "Example Hotel",
+          "hotelName": "Shinjuku Central Hotel",
+          "hotelAddress": "1-2-3 Shinjuku, Tokyo",
+          "confirmationNumber": "HOTEL-20261001",
+          "startTime": "2026-10-01T07:00:00Z",
+          "endTime": "2026-10-05T02:00:00Z",
+          "travelerCount": 2,
+          "amount": "4500.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-irrelevant-image",
+      "scenario": "不相关图片",
+      "mediaType": "image/png",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "irrelevantImage"
+      },
+      "expectRejectedOrEmpty": true,
+      "expectedBookings": [],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": []
+    },
+    {
+      "id": "ocr-duplicate-orders",
+      "scenario": "重复订单识别",
+      "source": "documents/duplicate-orders.pdf",
+      "mediaType": "application/pdf",
+      "locale": "zh-CN",
+      "transform": {
+        "kind": "identity"
+      },
+      "expectedBookings": [
+        {
+          "type": "FLIGHT",
+          "provider": "China Eastern",
+          "origin": "Shanghai Pudong",
+          "destination": "Tokyo Narita",
+          "transportNumber": "MU1234",
+          "confirmationNumber": "DUP-2026",
+          "startTime": "2026-10-01T01:00:00Z",
+          "endTime": "2026-10-01T04:00:00Z",
+          "travelerCount": 2,
+          "amount": "3600.0000",
+          "currency": "CNY"
+        },
+        {
+          "type": "FLIGHT",
+          "provider": "China Eastern",
+          "origin": "Shanghai Pudong",
+          "destination": "Tokyo Narita",
+          "transportNumber": "MU1234",
+          "confirmationNumber": "DUP-2026",
+          "startTime": "2026-10-01T01:00:00Z",
+          "endTime": "2026-10-01T04:00:00Z",
+          "travelerCount": 2,
+          "amount": "3600.0000",
+          "currency": "CNY"
+        }
+      ],
+      "expectedLowConfidenceFields": [],
+      "expectedDuplicateGroups": [
+        {
+          "confirmationNumber": "DUP-2026",
+          "count": 2
+        }
+      ]
+    }
+  ],
+  "ragSupplementalKnowledge": {
+    "chunks": [
+      {
+        "chunkId": "beijing-zhongshan-park",
+        "sourceId": "kb-beijing-zhongshan-park",
+        "sourceType": "ATTRACTION",
+        "title": "北京中山公园",
+        "city": "北京",
+        "region": "东城区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "content": "北京中山公园位于天安门西侧，属于北京东城区。",
+        "updatedAt": "2026-08-08T00:00:00Z",
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      {
+        "chunkId": "shanghai-zhongshan-park",
+        "sourceId": "kb-shanghai-zhongshan-park",
+        "sourceType": "ATTRACTION",
+        "title": "上海中山公园",
+        "city": "上海",
+        "region": "长宁区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "content": "上海中山公园位于长宁区，邻近上海轨道交通中山公园站。",
+        "updatedAt": "2026-08-08T00:00:00Z",
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      {
+        "chunkId": "beijing-shanghai-rail",
+        "sourceId": "kb-transit-beijing-shanghai",
+        "sourceType": "TRANSIT_RULE",
+        "title": "北京至上海城际交通",
+        "city": "北京",
+        "region": null,
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "content": "北京与上海之间可选择高速铁路，具体车次需查询实时工具。",
+        "updatedAt": "2026-08-08T00:00:00Z",
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      {
+        "chunkId": "shanghai-beijing-rail",
+        "sourceId": "kb-transit-shanghai-beijing",
+        "sourceType": "TRANSIT_RULE",
+        "title": "上海至北京城际交通",
+        "city": "上海",
+        "region": null,
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "content": "上海与北京之间可选择高速铁路，跨城市规划应预留车站换乘时间。",
+        "updatedAt": "2026-08-08T00:00:00Z",
+        "metadata": {
+          "synthetic": true
+        }
+      },
+      {
+        "chunkId": "summer-palace-conflict-old",
+        "sourceId": "kb-summer-palace-monday-old",
+        "sourceType": "OPENING_HOURS",
+        "title": "颐和园旧周一开放信息",
+        "city": "北京",
+        "region": "海淀区",
+        "validFrom": "2026-01-01",
+        "validTo": "2026-12-31",
+        "language": "zh-CN",
+        "content": "旧来源称颐和园周一全天开放。",
+        "updatedAt": "2026-01-01T00:00:00Z",
+        "metadata": {
+          "synthetic": true,
+          "authority": "secondary"
+        }
+      },
+      {
+        "chunkId": "summer-palace-conflict-new",
+        "sourceId": "kb-summer-palace-monday-current",
+        "sourceType": "OPENING_HOURS",
+        "title": "颐和园当前周一开放信息",
+        "city": "北京",
+        "region": "海淀区",
+        "validFrom": "2026-01-01",
+        "validTo": "2026-12-31",
+        "language": "zh-CN",
+        "content": "当前来源称颐和园周一开放安排应以官方预约页面为准。",
+        "updatedAt": "2026-08-15T00:00:00Z",
+        "metadata": {
+          "synthetic": true,
+          "authority": "official"
+        }
+      },
+      {
+        "chunkId": "mixed-language-forbidden-city",
+        "sourceId": "kb-mixed-forbidden-city",
+        "sourceType": "ATTRACTION",
+        "title": "Forbidden City 故宫参观提示",
+        "city": "北京",
+        "region": "东城区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "content": "Forbidden City 即故宫博物院，入口为 Meridian Gate 午门。",
+        "updatedAt": "2026-08-16T00:00:00Z",
+        "metadata": {
+          "synthetic": true
+        }
+      }
+    ]
+  },
+  "ragCases": [
+    {
+      "id": "rag-exact-attraction",
+      "scenario": "精确景点查询",
+      "request": {
+        "query": "故宫博物院位于哪里",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "includeGraph": false,
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-attraction-forbidden-city": 3,
+        "kb-mixed-forbidden-city": 1
+      },
+      "requiredEvidence": [
+        "kb-attraction-forbidden-city"
+      ],
+      "forbiddenEvidence": []
+    },
+    {
+      "id": "rag-nearby-on-route",
+      "scenario": "附近和顺路查询",
+      "request": {
+        "query": "故宫附近有哪些顺路景点",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-attraction-jingshan": 3,
+        "kb-attraction-beihai": 2
+      },
+      "requiredEvidence": [
+        "kb-attraction-jingshan"
+      ],
+      "forbiddenEvidence": []
+    },
+    {
+      "id": "rag-region-three-day",
+      "scenario": "区域级三日规划",
+      "request": {
+        "query": "北京三天如何分区游览",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-region-beijing-three-days": 3,
+        "kb-city-beijing-overview": 1
+      },
+      "requiredEvidence": [
+        "kb-region-beijing-three-days"
+      ],
+      "forbiddenEvidence": []
+    },
+    {
+      "id": "rag-user-history",
+      "scenario": "用户历史偏好",
+      "user": "A",
+      "request": {
+        "query": "根据我之前的历史偏好推荐北京文化地点",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "includeUserMemory": true,
+        "maxResults": 5
+      },
+      "relevance": {
+        "memory-user-a-saved-place": 3,
+        "memory-user-a-trip-history": 2,
+        "memory-user-a-pace": 1
+      },
+      "requiredEvidence": [
+        "memory-user-a-saved-place"
+      ],
+      "forbiddenEvidence": [
+        "memory-user-b-dietary"
+      ]
+    },
+    {
+      "id": "rag-expired-knowledge",
+      "scenario": "过期知识",
+      "request": {
+        "query": "故宫二十点闭馆吗",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "includeGraph": false,
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-hours-forbidden-city-2026": 3
+      },
+      "requiredEvidence": [
+        "kb-hours-forbidden-city-2026"
+      ],
+      "forbiddenEvidence": [
+        "kb-hours-forbidden-city-2025"
+      ]
+    },
+    {
+      "id": "rag-conflicting-sources",
+      "scenario": "冲突来源",
+      "request": {
+        "query": "颐和园周一是否开放",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "includeGraph": false,
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-summer-palace-monday-current": 3,
+        "kb-summer-palace-monday-old": 1
+      },
+      "requiredEvidence": [
+        "kb-summer-palace-monday-current",
+        "kb-summer-palace-monday-old"
+      ],
+      "forbiddenEvidence": []
+    },
+    {
+      "id": "rag-no-knowledge",
+      "scenario": "无相关知识",
+      "request": {
+        "query": "不存在地点的攻略",
+        "city": "不存在城市",
+        "includeGraph": false,
+        "maxResults": 5
+      },
+      "relevance": {},
+      "requiredEvidence": [],
+      "forbiddenEvidence": [],
+      "expectNoEvidence": true
+    },
+    {
+      "id": "rag-same-name-place",
+      "scenario": "同名地点",
+      "request": {
+        "query": "中山公园在哪里",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "includeGraph": false,
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-beijing-zhongshan-park": 3
+      },
+      "requiredEvidence": [
+        "kb-beijing-zhongshan-park"
+      ],
+      "forbiddenEvidence": [
+        "kb-shanghai-zhongshan-park"
+      ]
+    },
+    {
+      "id": "rag-multi-city",
+      "scenario": "多城市",
+      "request": {
+        "query": "北京和上海之间的高铁如何衔接",
+        "travelDate": "2026-10-01",
+        "includeGraph": false,
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-transit-beijing-shanghai": 3,
+        "kb-transit-shanghai-beijing": 3
+      },
+      "requiredEvidence": [
+        "kb-transit-beijing-shanghai",
+        "kb-transit-shanghai-beijing"
+      ],
+      "forbiddenEvidence": []
+    },
+    {
+      "id": "rag-mixed-language",
+      "scenario": "中文和英文混合",
+      "request": {
+        "query": "Forbidden City 从午门 Meridian Gate 怎么参观",
+        "city": "北京",
+        "travelDate": "2026-10-01",
+        "includeGraph": false,
+        "maxResults": 5
+      },
+      "relevance": {
+        "kb-mixed-forbidden-city": 3,
+        "kb-attraction-forbidden-city": 2
+      },
+      "requiredEvidence": [
+        "kb-mixed-forbidden-city"
+      ],
+      "forbiddenEvidence": []
+    }
+  ],
+  "agentEvidence": {
+    "junitClasses": [
+      "com.tripagent.nexus.agent.AgentOrchestrationIntegrationTest",
+      "com.tripagent.nexus.agent.AgentSchemaValidatorTest",
+      "com.tripagent.nexus.agent.a2a.A2ADelegationServiceTest",
+      "com.tripagent.nexus.agent.a2a.A2AChaosTest",
+      "com.tripagent.nexus.integration.EvaluationReplayIntegrationTest",
+      "com.tripagent.nexus.integration.EndToEndPlanningIntegrationTest"
+    ],
+    "normalCoordinatorAgentTasks": 8,
+    "forcedTimeoutCases": 1,
+    "expectedCoordinatorRoutes": 7,
+    "expectedNecessaryToolCalls": 5,
+    "structuredOutputs": 3,
+    "validStructuredOutputs": 2,
+    "recoveryCases": 3
+  },
+  "manualReview": {
+    "sampling": "ALL_SEMANTIC_CASES",
+    "requiredFields": [
+      "reviewer",
+      "reviewedAt",
+      "semanticCorrect",
+      "notes"
+    ]
+  }
+}

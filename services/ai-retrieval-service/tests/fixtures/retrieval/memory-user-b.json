@@ -1,0 +1,21 @@
+{
+  "chunks": [
+    {
+      "chunkId": "dietary-preference",
+      "sourceId": "memory-user-b-dietary",
+      "sourceType": "DIETARY_RESTRICTION",
+      "title": "另一用户饮食偏好",
+      "city": "北京",
+      "region": null,
+      "validFrom": null,
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "另一用户偏好重辣餐厅和夜宵。",
+      "updatedAt": "2026-08-21T00:00:00Z",
+      "metadata": {
+        "consent": "explicit",
+        "synthetic": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+"""Private FastAPI route adapters."""

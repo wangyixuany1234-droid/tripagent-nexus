@@ -1,0 +1,349 @@
+{
+  "chunks": [
+    {
+      "chunkId": "beijing-forbidden-city-overview",
+      "sourceId": "kb-attraction-forbidden-city",
+      "sourceType": "ATTRACTION",
+      "title": "故宫博物院概览",
+      "city": "北京",
+      "region": "东城区",
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "故宫位于北京东城区中轴线上，主要参观路线由午门向北至神武门。",
+      "updatedAt": "2026-08-01T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-city-guide",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-jingshan-nearby",
+      "sourceId": "kb-attraction-jingshan",
+      "sourceType": "ATTRACTION",
+      "title": "景山公园",
+      "city": "北京",
+      "region": "东城区",
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "景山公园位于故宫神武门北侧，步行约五百米，适合与故宫安排为顺路景点。",
+      "updatedAt": "2026-08-02T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-attraction",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-beihai-nearby",
+      "sourceId": "kb-attraction-beihai",
+      "sourceType": "ATTRACTION",
+      "title": "北海公园",
+      "city": "北京",
+      "region": "西城区",
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "北海公园在故宫西北方向，可与景山公园组合游览。",
+      "updatedAt": "2026-08-02T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-attraction",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-three-day-regions",
+      "sourceId": "kb-region-beijing-three-days",
+      "sourceType": "REGION_GUIDE",
+      "title": "北京三日分区建议",
+      "city": "北京",
+      "region": null,
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "北京三天可按东城中轴线、西城湖区和北部奥林匹克区域分区游览，减少跨区往返。",
+      "updatedAt": "2026-08-03T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-region-guide",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "forbidden-city-hours-expired",
+      "sourceId": "kb-hours-forbidden-city-2025",
+      "sourceType": "OPENING_HOURS",
+      "title": "故宫旧营业时间",
+      "city": "北京",
+      "region": "东城区",
+      "validFrom": "2025-01-01",
+      "validTo": "2025-12-31",
+      "language": "zh-CN",
+      "content": "旧资料称故宫每日二十点闭馆，本条信息已经过期。",
+      "updatedAt": "2025-01-01T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-expired-hours",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "forbidden-city-hours-current",
+      "sourceId": "kb-hours-forbidden-city-2026",
+      "sourceType": "OPENING_HOURS",
+      "title": "故宫当前营业时间",
+      "city": "北京",
+      "region": "东城区",
+      "validFrom": "2026-01-01",
+      "validTo": "2026-12-31",
+      "language": "zh-CN",
+      "content": "故宫开放时间应以预约日期的官方公告为准，通常需提前预约。",
+      "updatedAt": "2026-08-04T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-current-hours",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-dining-shichahai",
+      "sourceId": "kb-dining-shichahai",
+      "sourceType": "DINING_AREA",
+      "title": "什刹海餐饮区域",
+      "city": "北京",
+      "region": "西城区",
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "什刹海周边餐厅类型丰富，可按清淡饮食或其他口味筛选。",
+      "updatedAt": "2026-08-05T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-dining-guide",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-city-guide",
+      "sourceId": "kb-city-beijing-overview",
+      "sourceType": "CITY_GUIDE",
+      "title": "北京城市攻略",
+      "city": "北京",
+      "region": null,
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "北京核心历史景点密集，按相邻城区规划可以减少通勤时间。",
+      "updatedAt": "2026-08-05T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-city-guide",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-transit-rule",
+      "sourceId": "kb-transit-beijing-security",
+      "sourceType": "TRANSIT_RULE",
+      "title": "北京轨道交通规则",
+      "city": "北京",
+      "region": null,
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "乘坐北京轨道交通需接受安全检查，并遵守车站现场客流管理。",
+      "updatedAt": "2026-08-05T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-transit-guide",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-travel-notice",
+      "sourceId": "kb-notice-reservations",
+      "sourceType": "NOTICE",
+      "title": "北京景点预约注意事项",
+      "city": "北京",
+      "region": null,
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "热门景点通常需要实名预约，出行前应核对官方预约规则。",
+      "updatedAt": "2026-08-05T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-notice",
+        "license": "synthetic"
+      }
+    },
+    {
+      "chunkId": "beijing-lodging-dongcheng",
+      "sourceId": "kb-lodging-dongcheng",
+      "sourceType": "LODGING_AREA",
+      "title": "东城区住宿特点",
+      "city": "北京",
+      "region": "东城区",
+      "validFrom": "2026-01-01",
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "东城区住宿靠近中轴线景点，适合以历史文化游览为主的行程。",
+      "updatedAt": "2026-08-05T00:00:00Z",
+      "metadata": {
+        "publisher": "fixture-lodging-guide",
+        "license": "synthetic"
+      }
+    }
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "nodeId": "city-beijing",
+        "type": "CITY",
+        "name": "北京",
+        "sourceId": "kb-city-beijing",
+        "sourceType": "CITY_GUIDE",
+        "title": "北京市",
+        "excerpt": "北京公共旅行知识图谱城市节点。",
+        "city": "北京",
+        "region": null,
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "updatedAt": "2026-08-01T00:00:00Z",
+        "metadata": {}
+      },
+      {
+        "nodeId": "region-dongcheng",
+        "type": "REGION",
+        "name": "东城区",
+        "sourceId": "kb-region-dongcheng",
+        "sourceType": "REGION_GUIDE",
+        "title": "东城区",
+        "excerpt": "东城区适合安排故宫、景山和中轴线相关景点。",
+        "city": "北京",
+        "region": "东城区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "updatedAt": "2026-08-03T00:00:00Z",
+        "metadata": {}
+      },
+      {
+        "nodeId": "region-xicheng",
+        "type": "REGION",
+        "name": "西城区",
+        "sourceId": "kb-region-xicheng",
+        "sourceType": "REGION_GUIDE",
+        "title": "西城区",
+        "excerpt": "西城区包含北海、什刹海等适合组合游览的区域。",
+        "city": "北京",
+        "region": "西城区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "updatedAt": "2026-08-03T00:00:00Z",
+        "metadata": {}
+      },
+      {
+        "nodeId": "attraction-forbidden-city",
+        "type": "ATTRACTION",
+        "name": "故宫",
+        "sourceId": "kb-attraction-forbidden-city",
+        "sourceType": "ATTRACTION",
+        "title": "故宫博物院",
+        "excerpt": "故宫位于北京东城区中轴线上。",
+        "city": "北京",
+        "region": "东城区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "updatedAt": "2026-08-01T00:00:00Z",
+        "metadata": {}
+      },
+      {
+        "nodeId": "attraction-jingshan",
+        "type": "ATTRACTION",
+        "name": "景山公园",
+        "sourceId": "kb-attraction-jingshan",
+        "sourceType": "ATTRACTION",
+        "title": "景山公园",
+        "excerpt": "景山公园距故宫神武门约五百米，适合顺路游览。",
+        "city": "北京",
+        "region": "东城区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "updatedAt": "2026-08-02T00:00:00Z",
+        "metadata": {}
+      },
+      {
+        "nodeId": "attraction-beihai",
+        "type": "ATTRACTION",
+        "name": "北海公园",
+        "sourceId": "kb-attraction-beihai",
+        "sourceType": "ATTRACTION",
+        "title": "北海公园",
+        "excerpt": "北海公园位于故宫西北方向。",
+        "city": "北京",
+        "region": "西城区",
+        "validFrom": "2026-01-01",
+        "validTo": null,
+        "language": "zh-CN",
+        "updatedAt": "2026-08-02T00:00:00Z",
+        "metadata": {}
+      }
+    ],
+    "relationships": [
+      {
+        "fromNodeId": "attraction-forbidden-city",
+        "toNodeId": "attraction-jingshan",
+        "type": "NEAR",
+        "distanceMeters": 500,
+        "durationMinutes": 8,
+        "metadata": {}
+      },
+      {
+        "fromNodeId": "attraction-forbidden-city",
+        "toNodeId": "attraction-beihai",
+        "type": "NEAR",
+        "distanceMeters": 1500,
+        "durationMinutes": 24,
+        "metadata": {}
+      },
+      {
+        "fromNodeId": "attraction-forbidden-city",
+        "toNodeId": "region-dongcheng",
+        "type": "LOCATED_IN",
+        "distanceMeters": null,
+        "durationMinutes": null,
+        "metadata": {}
+      },
+      {
+        "fromNodeId": "attraction-jingshan",
+        "toNodeId": "region-dongcheng",
+        "type": "LOCATED_IN",
+        "distanceMeters": null,
+        "durationMinutes": null,
+        "metadata": {}
+      },
+      {
+        "fromNodeId": "attraction-beihai",
+        "toNodeId": "region-xicheng",
+        "type": "LOCATED_IN",
+        "distanceMeters": null,
+        "durationMinutes": null,
+        "metadata": {}
+      },
+      {
+        "fromNodeId": "region-dongcheng",
+        "toNodeId": "city-beijing",
+        "type": "LOCATED_IN",
+        "distanceMeters": null,
+        "durationMinutes": null,
+        "metadata": {}
+      },
+      {
+        "fromNodeId": "region-xicheng",
+        "toNodeId": "city-beijing",
+        "type": "LOCATED_IN",
+        "distanceMeters": null,
+        "durationMinutes": null,
+        "metadata": {}
+      }
+    ]
+  }
+}

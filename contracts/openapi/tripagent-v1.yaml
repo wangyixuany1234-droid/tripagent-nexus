@@ -1,0 +1,2688 @@
+openapi: 3.1.0
+info:
+  title: TripAgent Nexus Public API
+  version: 1.0.0
+  summary: Contract-first trip, plan, guarded action, evaluation, and operations API
+  description: |
+    Frozen Phase 10 public API served only by Spring Boot. All timestamps are RFC 3339 UTC
+    instants unless a field is explicitly a calendar date. Monetary values use
+    decimal semantics and map to Java BigDecimal and PostgreSQL NUMERIC(19,4).
+  contact:
+    name: TripAgent Nexus Engineering
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+x-api-stability: frozen
+x-api-version: v1
+x-compatibility-policy:
+  frozenFieldsCannotBeRemovedOrRenamed: true
+  newFieldsMustBeOptional: true
+  documentedErrorCodesRequired: true
+  pathPrefix: /api/v1
+servers:
+  - url: /
+    description: Same-origin Spring Boot API
+tags:
+  - name: System
+    description: Public service availability and provider mode
+  - name: Maps
+    description: Server-proxied map resources for browser visualization
+  - name: Trips
+    description: Trip projects and requirements
+  - name: Documents
+    description: Asynchronous document parsing
+  - name: Plans
+    description: Travel plan generation, retrieval, replanning, and confirmation
+  - name: Tasks
+    description: Asynchronous task state and SSE progress
+  - name: Feedback
+    description: User feedback for a trip or plan
+  - name: Actions
+    description: Human approval boundary for all real-cost or transactional actions
+  - name: Evaluations
+    description: Protected asynchronous Harness Engineering replay
+  - name: Operations
+    description: Protected asynchronous governance and dead-letter operations
+
+security: []
+
+paths:
+  /api/v1/health:
+    get:
+      tags: [System]
+      operationId: getSystemHealth
+      summary: Get public API availability and provider mode
+      responses:
+        "200":
+          description: Public API health
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SystemHealth"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /api/v1/maps/tiles/{zoom}/{x}/{y}.png:
+    parameters:
+      - $ref: "#/components/parameters/MapZoom"
+      - $ref: "#/components/parameters/MapTileX"
+      - $ref: "#/components/parameters/MapTileY"
+    get:
+      tags: [Maps]
+      operationId: getMapTile
+      summary: Get a cached world map tile through the backend allowlist
+      responses:
+        "200":
+          description: PNG map tile
+          headers:
+            Cache-Control:
+              description: Browser cache policy inherited from the configured tile provider
+              schema:
+                type: string
+            ETag:
+              description: Provider entity tag when available
+              schema:
+                type: string
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+
+  /api/v1/trips:
+    post:
+      tags: [Trips]
+      operationId: createTrip
+      summary: Create a trip project
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTripRequest"
+      responses:
+        "201":
+          description: Trip created
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/trips/{tripId}:
+    parameters:
+      - $ref: "#/components/parameters/TripId"
+    get:
+      tags: [Trips]
+      operationId: getTrip
+      summary: Get a trip project
+      responses:
+        "200":
+          description: Trip
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Trip"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/trips/{tripId}/requirements:
+    parameters:
+      - $ref: "#/components/parameters/TripId"
+    put:
+      tags: [Trips]
+      operationId: saveTravelRequirement
+      summary: Create or replace the normalized travel requirement
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveTravelRequirementRequest"
+      responses:
+        "200":
+          description: Saved requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelRequirement"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/documents/parse:
+    post:
+      tags: [Documents]
+      operationId: parseDocument
+      summary: Accept a document and queue asynchronous parsing
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [tripId, file]
+              properties:
+                tripId:
+                  type: string
+                  format: uuid
+                file:
+                  type: string
+                  format: binary
+                  description: PNG, JPEG, WEBP, or PDF within configured byte, pixel, and page limits
+      responses:
+        "202":
+          description: Document parsing accepted
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/documents/{documentId}:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+    get:
+      tags: [Documents]
+      operationId: getParsedDocument
+      summary: Get document parsing state and parsed bookings
+      responses:
+        "200":
+          description: Parsed document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParsedDocument"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/documents/{documentId}/retry:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+    post:
+      tags: [Documents]
+      operationId: retryDocumentParsing
+      summary: Retry parsing for a failed document without uploading its content again
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "202":
+          description: Document parsing retry accepted
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/documents/{documentId}/bookings/{bookingId}:
+    parameters:
+      - $ref: "#/components/parameters/DocumentId"
+      - $ref: "#/components/parameters/BookingId"
+    patch:
+      tags: [Documents]
+      operationId: correctParsedBooking
+      summary: Correct extracted booking fields and append an immutable audit record
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ActorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookingCorrectionRequest"
+      responses:
+        "200":
+          description: Corrected booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParsedBooking"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/plans:
+    post:
+      tags: [Plans]
+      operationId: createTravelPlan
+      summary: Reserve a plan resource and queue asynchronous generation
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTravelPlanRequest"
+      responses:
+        "202":
+          description: Plan generation accepted
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/plans/{planId}:
+    parameters:
+      - $ref: "#/components/parameters/PlanId"
+    get:
+      tags: [Plans]
+      operationId: getTravelPlan
+      summary: Get one travel plan
+      responses:
+        "200":
+          description: Travel plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelPlan"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/trips/{tripId}/plans:
+    parameters:
+      - $ref: "#/components/parameters/TripId"
+    get:
+      tags: [Plans]
+      operationId: listTravelPlans
+      summary: List plans belonging to a trip
+      responses:
+        "200":
+          description: Plan list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelPlanList"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/plans/{planId}/replan:
+    parameters:
+      - $ref: "#/components/parameters/PlanId"
+    post:
+      tags: [Plans]
+      operationId: replanTravelPlan
+      summary: Create a successor plan version and queue regeneration
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplanRequest"
+      responses:
+        "202":
+          description: Replanning accepted
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/plans/{planId}/compare/{otherPlanId}:
+    parameters:
+      - $ref: "#/components/parameters/PlanId"
+      - name: otherPlanId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Plans]
+      operationId: compareTravelPlanVersions
+      summary: Compare two immutable versions from the same plan family
+      responses:
+        "200":
+          description: Version comparison
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanComparison"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/plans/{planId}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/PlanId"
+    post:
+      tags: [Plans]
+      operationId: confirmTravelPlan
+      summary: Confirm a generated travel plan without executing provider actions
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmPlanRequest"
+      responses:
+        "200":
+          description: Confirmed plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TravelPlan"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/feedback:
+    post:
+      tags: [Feedback]
+      operationId: createFeedback
+      summary: Record user feedback for a trip or plan
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedbackRequest"
+      responses:
+        "201":
+          description: Feedback created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Feedback"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/tasks/{taskId}:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [Tasks]
+      operationId: getTask
+      summary: Get asynchronous task state
+      responses:
+        "200":
+          description: Task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskRecord"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/tasks/{taskId}/events:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+      - name: Last-Event-ID
+        in: header
+        required: false
+        description: Last processed event UUID. Later retained events are replayed.
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [Tasks]
+      operationId: streamTaskEvents
+      summary: Stream persisted and live task progress
+      responses:
+        "200":
+          description: |
+            Server-Sent Events stream. The SSE `id` equals `eventId`; clients use
+            `Last-Event-ID` to resume without replaying earlier events.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+              example: |
+                id: 018f0e31-6ec8-7a59-b871-0242ac120001
+                event: task-progress
+                data: {"eventId":"018f0e31-6ec8-7a59-b871-0242ac120001","taskId":"018f0e31-6ec8-7a59-b871-0242ac120002","stage":"QUEUED","progress":0,"message":"Task queued","timestamp":"2026-09-03T06:30:00Z"}
+          x-sse-event-schema:
+            $ref: "#/components/schemas/TaskEvent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          description: Requested event is outside retained history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+
+  /api/v1/tasks/{taskId}/agents:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    get:
+      tags: [Tasks]
+      operationId: listTaskAgentExecutions
+      summary: List backend-observed Agent execution states for a planning task
+      responses:
+        "200":
+          description: Agent execution list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentExecutionList"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/tasks/{taskId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/TaskId"
+    post:
+      tags: [Tasks]
+      operationId: cancelTask
+      summary: Cancel a non-terminal task
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      responses:
+        "200":
+          description: Cancelled task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/operations/dead-letters:
+    get:
+      tags: [Operations]
+      operationId: listDeadLetters
+      summary: List retained dead-letter events
+      parameters:
+        - $ref: "#/components/parameters/OperationsToken"
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/DeadLetterStatus"
+      responses:
+        "200":
+          description: Dead-letter records ordered by newest first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeadLetterList"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/v1/operations/dead-letters/{deadLetterId}/replay:
+    parameters:
+      - $ref: "#/components/parameters/DeadLetterId"
+    post:
+      tags: [Operations]
+      operationId: replayDeadLetter
+      summary: Republish one retained dead-letter event
+      parameters:
+        - $ref: "#/components/parameters/OperationsToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplayDeadLetterRequest"
+      responses:
+        "202":
+          description: Replay event accepted into the transactional outbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeadLetterRecord"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
+
+  /api/v1/actions:
+    post:
+      tags: [Actions]
+      operationId: proposeGuardedAction
+      summary: Create a non-executable candidate action awaiting explicit user confirmation
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ActorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateGuardedActionRequest"
+      responses:
+        "201":
+          description: Candidate action created
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardedAction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/actions/{actionId}:
+    parameters:
+      - $ref: "#/components/parameters/ActionId"
+    get:
+      tags: [Actions]
+      operationId: getGuardedAction
+      summary: Get a candidate action and its immutable audit trail
+      parameters:
+        - $ref: "#/components/parameters/ActorId"
+      responses:
+        "200":
+          description: Guarded action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardedAction"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /api/v1/actions/{actionId}/confirm:
+    parameters:
+      - $ref: "#/components/parameters/ActionId"
+    post:
+      tags: [Actions]
+      operationId: confirmGuardedAction
+      summary: Confirm an unexpired candidate after acknowledging its risk and exact cost
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ActorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmGuardedActionRequest"
+      responses:
+        "200":
+          description: Confirmed action. Confirmation alone does not call a provider.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardedAction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/actions/{actionId}/reject:
+    parameters:
+      - $ref: "#/components/parameters/ActionId"
+    post:
+      tags: [Actions]
+      operationId: rejectGuardedAction
+      summary: Reject a candidate action and append an immutable audit record
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ActorId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectGuardedActionRequest"
+      responses:
+        "200":
+          description: Rejected action
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuardedAction"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
+  /api/v1/evaluations/runs:
+    post:
+      tags: [Evaluations]
+      operationId: startEvaluationRun
+      summary: Queue a versioned Harness Engineering dataset replay
+      parameters:
+        - $ref: "#/components/parameters/OperationsToken"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEvaluationRunRequest"
+      responses:
+        "202":
+          description: Evaluation replay accepted
+          headers:
+            Location:
+              $ref: "#/components/headers/Location"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TaskAccepted"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/evaluations/runs/{runId}:
+    parameters:
+      - $ref: "#/components/parameters/EvaluationRunId"
+    get:
+      tags: [Evaluations]
+      operationId: getEvaluationRun
+      summary: Get aggregate metrics, sample outcomes, failures, and execution environment
+      parameters:
+        - $ref: "#/components/parameters/OperationsToken"
+      responses:
+        "200":
+          description: Evaluation run report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EvaluationRun"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Caller-generated key scoped to operation and authenticated actor
+      schema:
+        type: string
+        minLength: 16
+        maxLength: 128
+        pattern: "^[A-Za-z0-9._:-]+$"
+    OperationsToken:
+      name: X-Operations-Token
+      in: header
+      required: true
+      description: Backend-only operations credential injected from a secret store
+      schema:
+        type: string
+        minLength: 32
+        maxLength: 256
+    TripId:
+      name: tripId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    BookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ActorId:
+      name: X-Actor-Id
+      in: header
+      required: true
+      description: Authenticated actor identifier propagated by the API gateway
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: "^[A-Za-z0-9._:@-]+$"
+    PlanId:
+      name: planId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DeadLetterId:
+      name: deadLetterId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ActionId:
+      name: actionId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EvaluationRunId:
+      name: runId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MapZoom:
+      name: zoom
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 19
+    MapTileX:
+      name: x
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 524287
+    MapTileY:
+      name: y
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 524287
+
+  headers:
+    Location:
+      description: Canonical URL for the resource
+      schema:
+        type: string
+        format: uri-reference
+
+  responses:
+    BadRequest:
+      description: Malformed request or idempotency key
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    NotFound:
+      description: Resource not found in the authorized scope
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Conflict:
+      description: Idempotency, state, or version conflict
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    UnprocessableEntity:
+      description: Domain or field validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    PayloadTooLarge:
+      description: Uploaded document exceeds the configured limit
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    UnsupportedMediaType:
+      description: Uploaded MIME type or extension is not allowed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    Unauthorized:
+      description: Operations credential is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    TooManyRequests:
+      description: Operations rate limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+    BadGateway:
+      description: Configured upstream provider failed or returned an invalid response
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ApiError"
+
+  schemas:
+    SystemHealth:
+      type: object
+      additionalProperties: false
+      required: [status, service, apiVersion, providerMode, timestamp]
+      properties:
+        status:
+          type: string
+          enum: [UP]
+        service:
+          type: string
+          maxLength: 100
+        apiVersion:
+          type: string
+          pattern: "^v[0-9]+$"
+        providerMode:
+          type: string
+          enum: [LIVE, MOCK]
+          description: MOCK when any user-facing planning provider runs in mock mode
+        timestamp:
+          $ref: "#/components/schemas/Instant"
+
+    DecimalAmount:
+      type: number
+      format: decimal
+      multipleOf: 0.0001
+      minimum: 0
+      examples: [12500.0000]
+    Currency:
+      type: string
+      pattern: "^[A-Z]{3}$"
+      examples: [CNY]
+    Instant:
+      type: string
+      format: date-time
+      description: RFC 3339 UTC instant
+      examples: ["2026-09-03T06:30:00Z"]
+    TimeZone:
+      type: string
+      minLength: 1
+      maxLength: 64
+      description: IANA time zone used only for display and local scheduling
+      examples: [Asia/Shanghai]
+    Pace:
+      type: string
+      enum: [RELAXED, BALANCED, INTENSIVE]
+    TransportMode:
+      type: string
+      enum: [WALK, TRANSIT, TAXI, CAR, BIKE, RAIL, FLIGHT, BUS, FERRY]
+    Place:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        placeId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 300
+        address:
+          type: string
+          maxLength: 500
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+    Traveler:
+      type: object
+      additionalProperties: false
+      required: [travelerId, displayName, type]
+      properties:
+        travelerId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          minLength: 1
+          maxLength: 100
+        type:
+          type: string
+          enum: [ADULT, CHILD, INFANT, SENIOR]
+        accessibilityNeeds:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 100
+
+    UserProfile:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - preferredPace
+        - interests
+        - dietaryRestrictions
+        - accommodationPreferences
+        - transportPreferences
+        - budgetHabits
+      properties:
+        userId:
+          type: string
+          format: uuid
+        preferredPace:
+          $ref: "#/components/schemas/Pace"
+        interests:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        dietaryRestrictions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        accommodationPreferences:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        transportPreferences:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/TransportMode"
+        budgetHabits:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+
+    TripStatus:
+      type: string
+      enum: [DRAFT, READY, ARCHIVED]
+    CreateTripRequest:
+      type: object
+      additionalProperties: false
+      required: [userId, title, timeZone]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 160
+        timeZone:
+          $ref: "#/components/schemas/TimeZone"
+    Trip:
+      type: object
+      additionalProperties: false
+      required: [tripId, userId, title, timeZone, status, createdAt, updatedAt]
+      properties:
+        tripId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        timeZone:
+          $ref: "#/components/schemas/TimeZone"
+        status:
+          $ref: "#/components/schemas/TripStatus"
+        requirement:
+          $ref: "#/components/schemas/TravelRequirement"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+
+    TravelRequirementFields:
+      type: object
+      required:
+        - origin
+        - destinations
+        - startDate
+        - endDate
+        - travelers
+        - totalBudget
+        - currency
+        - interests
+        - pace
+        - mustVisit
+        - avoid
+        - freeTextConstraints
+      properties:
+        origin:
+          $ref: "#/components/schemas/Place"
+        destinations:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/Place"
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        travelers:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/Traveler"
+        totalBudget:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+        interests:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 100
+        pace:
+          $ref: "#/components/schemas/Pace"
+        mustVisit:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 200
+        avoid:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 200
+        freeTextConstraints:
+          type: string
+          maxLength: 5000
+    SaveTravelRequirementRequest:
+      allOf:
+        - $ref: "#/components/schemas/TravelRequirementFields"
+      unevaluatedProperties: false
+    TravelRequirement:
+      allOf:
+        - $ref: "#/components/schemas/TravelRequirementFields"
+        - type: object
+          required: [tripId, updatedAt]
+          properties:
+            tripId:
+              type: string
+              format: uuid
+            updatedAt:
+              $ref: "#/components/schemas/Instant"
+      unevaluatedProperties: false
+
+    BookingType:
+      type: string
+      enum: [FLIGHT, HOTEL, TICKET, TRAIN, OTHER]
+    BookingReviewStatus:
+      type: string
+      enum: [AUTO_ACCEPTED, NEEDS_REVIEW, CORRECTED]
+    ExtractedFieldStatus:
+      type: string
+      enum: [EXTRACTED, LOW_CONFIDENCE, MISSING, CORRECTED]
+    BookingField:
+      type: string
+      enum:
+        - type
+        - provider
+        - origin
+        - destination
+        - hotelName
+        - hotelAddress
+        - transportNumber
+        - startTime
+        - endTime
+        - travelerCount
+        - amount
+        - currency
+        - confirmationNumber
+    EvidenceRegion:
+      type: object
+      additionalProperties: false
+      required: [page, x, y, width, height]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        x:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 1
+        y:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 1
+        width:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+          maximum: 1
+        height:
+          type: number
+          format: decimal
+          exclusiveMinimum: 0
+          maximum: 1
+    ExtractedFieldEvidence:
+      type: object
+      additionalProperties: false
+      required: [field, confidence, status]
+      description: |
+        Field-level OCR evidence. Non-missing fields should include textEvidence, region,
+        or both; this cross-field rule is enforced by the backend validator.
+      properties:
+        field:
+          $ref: "#/components/schemas/BookingField"
+        confidence:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 1
+          multipleOf: 0.0001
+        status:
+          $ref: "#/components/schemas/ExtractedFieldStatus"
+        textEvidence:
+          type: string
+          maxLength: 1000
+        region:
+          $ref: "#/components/schemas/EvidenceRegion"
+    BookingValidationIssue:
+      type: object
+      additionalProperties: false
+      required: [code, field, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - END_BEFORE_START
+            - OUTSIDE_TRIP_DATES
+            - DUPLICATE_CONFIRMATION
+            - AMOUNT_OR_CURRENCY_MISSING
+            - LOW_CONFIDENCE_CRITICAL_FIELD
+            - MUTUALLY_EXCLUSIVE_TIME_OVERLAP
+        field:
+          type: string
+          maxLength: 100
+        message:
+          type: string
+          maxLength: 500
+    BookingCorrectionAudit:
+      type: object
+      additionalProperties: false
+      required:
+        [auditId, field, originalValue, correctedValue, actorId, correctedAt]
+      properties:
+        auditId:
+          type: string
+          format: uuid
+        field:
+          $ref: "#/components/schemas/BookingField"
+        originalValue:
+          type: string
+          maxLength: 2000
+        correctedValue:
+          type: string
+          maxLength: 2000
+        actorId:
+          type: string
+          maxLength: 128
+        reason:
+          type: string
+          maxLength: 500
+        correctedAt:
+          $ref: "#/components/schemas/Instant"
+    BookingFieldCorrection:
+      type: object
+      additionalProperties: false
+      required: [field, value]
+      properties:
+        field:
+          $ref: "#/components/schemas/BookingField"
+        value:
+          type: string
+          maxLength: 2000
+    BookingCorrectionRequest:
+      type: object
+      additionalProperties: false
+      required: [corrections]
+      properties:
+        corrections:
+          type: array
+          minItems: 1
+          maxItems: 13
+          items:
+            $ref: "#/components/schemas/BookingFieldCorrection"
+        reason:
+          type: string
+          maxLength: 500
+    ParsedBooking:
+      type: object
+      additionalProperties: false
+      required:
+        - bookingId
+        - type
+        - sourceDocumentId
+        - confidence
+        - missingFields
+        - reviewStatus
+        - fieldEvidence
+        - validationIssues
+        - corrections
+      properties:
+        bookingId:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/BookingType"
+        sourceDocumentId:
+          type: string
+          format: uuid
+        provider:
+          type: string
+          maxLength: 200
+        origin:
+          type: string
+          maxLength: 300
+        destination:
+          type: string
+          maxLength: 300
+        hotelName:
+          type: string
+          maxLength: 300
+        hotelAddress:
+          type: string
+          maxLength: 500
+        transportNumber:
+          type: string
+          maxLength: 100
+        confirmationNumber:
+          type: string
+          maxLength: 200
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        endTime:
+          $ref: "#/components/schemas/Instant"
+        travelerCount:
+          type: integer
+          minimum: 1
+          maximum: 100
+        amount:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+        confidence:
+          type: number
+          format: decimal
+          minimum: 0
+          maximum: 1
+          multipleOf: 0.0001
+        missingFields:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        reviewStatus:
+          $ref: "#/components/schemas/BookingReviewStatus"
+        fieldEvidence:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ExtractedFieldEvidence"
+        validationIssues:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/BookingValidationIssue"
+        corrections:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/BookingCorrectionAudit"
+    DocumentStatus:
+      type: string
+      enum: [QUEUED, PARSING, NEEDS_REVIEW, PARSED, FAILED, CANCELLED]
+    ParsedDocument:
+      type: object
+      additionalProperties: false
+      required:
+        - documentId
+        - tripId
+        - fileName
+        - mediaType
+        - sizeBytes
+        - sha256
+        - pageCount
+        - status
+        - bookings
+        - createdAt
+        - updatedAt
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        mediaType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+          minimum: 1
+        sha256:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+        pageCount:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/DocumentStatus"
+        bookings:
+          type: array
+          items:
+            $ref: "#/components/schemas/ParsedBooking"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+
+    PlanStatus:
+      type: string
+      enum: [GENERATING, READY, PARTIAL, FAILED, CONFIRMED, CANCELLED]
+    PlanStrategy:
+      type: string
+      enum: [BUDGET, BALANCED, COMFORT, LOW_TRANSIT, CUSTOM]
+    CreateTravelPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [tripId]
+      properties:
+        tripId:
+          type: string
+          format: uuid
+        title:
+          type: string
+          maxLength: 200
+    ReplanRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        freeTextConstraints:
+          type: string
+          maxLength: 5000
+        lockedItemIds:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        removedItemIds:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        adjustedTotalBudget:
+          $ref: "#/components/schemas/DecimalAmount"
+        adjustedPace:
+          type: string
+          enum: [RELAXED, BALANCED, INTENSIVE]
+        addedPreferences:
+          type: array
+          maxItems: 50
+          uniqueItems: true
+          items:
+            type: string
+            minLength: 1
+            maxLength: 200
+        naturalLanguageRequest:
+          type: string
+          maxLength: 5000
+    ConfirmPlanRequest:
+      type: object
+      additionalProperties: false
+      required: [expectedVersion]
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 1
+    TravelPlan:
+      type: object
+      additionalProperties: false
+      required:
+        - planId
+        - planFamilyId
+        - tripId
+        - alternativeKey
+        - strategy
+        - version
+        - title
+        - summary
+        - days
+        - budgetSummary
+        - conflicts
+        - evidence
+        - triggerReason
+        - replanInput
+        - changeSummary
+        - autoReplanned
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        planId:
+          type: string
+          format: uuid
+        planFamilyId:
+          type: string
+          format: uuid
+        tripId:
+          type: string
+          format: uuid
+        previousPlanId:
+          type: string
+          format: uuid
+        version:
+          type: integer
+          minimum: 1
+        alternativeKey:
+          type: string
+          pattern: "^[a-z][a-z0-9-]{1,39}$"
+        strategy:
+          $ref: "#/components/schemas/PlanStrategy"
+        title:
+          type: string
+          maxLength: 200
+        summary:
+          type: string
+          maxLength: 5000
+        days:
+          type: array
+          items:
+            $ref: "#/components/schemas/DayPlan"
+        budgetSummary:
+          $ref: "#/components/schemas/BudgetSummary"
+        conflicts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Conflict"
+        evidence:
+          type: array
+          items:
+            $ref: "#/components/schemas/Evidence"
+        triggerReason:
+          type: string
+          maxLength: 1000
+        replanInput:
+          $ref: "#/components/schemas/ReplanInputSnapshot"
+        changeSummary:
+          type: string
+          maxLength: 2000
+        autoReplanned:
+          type: boolean
+        status:
+          $ref: "#/components/schemas/PlanStatus"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+    TravelPlanList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TravelPlan"
+    ReplanInputSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          lockedItemIds,
+          removedItemIds,
+          addedPreferences,
+          naturalLanguageRequest,
+        ]
+      properties:
+        lockedItemIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        removedItemIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        adjustedTotalBudget:
+          type: [number, "null"]
+          format: decimal
+          multipleOf: 0.0001
+          minimum: 0
+        adjustedPace:
+          type: [string, "null"]
+          enum: [RELAXED, BALANCED, INTENSIVE, null]
+        addedPreferences:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        naturalLanguageRequest:
+          type: string
+          maxLength: 5000
+    PlanComparison:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          planFamilyId,
+          fromPlanId,
+          toPlanId,
+          fromVersion,
+          toVersion,
+          budgetDelta,
+          addedItemIds,
+          removedItemIds,
+          changedItemIds,
+          resolvedConflictCodes,
+          introducedConflictCodes,
+          summary,
+        ]
+      properties:
+        planFamilyId:
+          type: string
+          format: uuid
+        fromPlanId:
+          type: string
+          format: uuid
+        toPlanId:
+          type: string
+          format: uuid
+        fromVersion:
+          type: integer
+          minimum: 1
+        toVersion:
+          type: integer
+          minimum: 1
+        budgetDelta:
+          type: number
+          format: decimal
+          multipleOf: 0.0001
+        addedItemIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        removedItemIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        changedItemIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        resolvedConflictCodes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        introducedConflictCodes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        summary:
+          type: string
+          maxLength: 2000
+    DayPlan:
+      type: object
+      additionalProperties: false
+      required: [dayNumber, date, title, items]
+      properties:
+        dayNumber:
+          type: integer
+          minimum: 1
+        date:
+          type: string
+          format: date
+        title:
+          type: string
+          maxLength: 200
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItineraryItem"
+    ItineraryItem:
+      type: object
+      additionalProperties: false
+      required:
+        - itemId
+        - type
+        - title
+        - startTime
+        - endTime
+        - location
+        - amount
+        - currency
+        - evidenceIds
+      properties:
+        itemId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [TRANSPORT, ACCOMMODATION, ATTRACTION, DINING, FREE_TIME, OTHER]
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+        startTime:
+          $ref: "#/components/schemas/Instant"
+        endTime:
+          $ref: "#/components/schemas/Instant"
+        location:
+          $ref: "#/components/schemas/Place"
+        amount:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+        evidenceIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+    BudgetSummary:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          totalBudget,
+          estimatedTotal,
+          remainingBudget,
+          currency,
+          items,
+          dailyBudgets,
+        ]
+      properties:
+        totalBudget:
+          $ref: "#/components/schemas/DecimalAmount"
+        estimatedTotal:
+          $ref: "#/components/schemas/DecimalAmount"
+        remainingBudget:
+          type: number
+          format: decimal
+          multipleOf: 0.0001
+        currency:
+          $ref: "#/components/schemas/Currency"
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetItem"
+        dailyBudgets:
+          type: array
+          items:
+            $ref: "#/components/schemas/DailyBudget"
+    DailyBudget:
+      type: object
+      additionalProperties: false
+      required: [date, amount, currency]
+      properties:
+        date:
+          type: string
+          format: date
+        amount:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+    BudgetItem:
+      type: object
+      additionalProperties: false
+      required: [category, description, amount, currency]
+      properties:
+        category:
+          type: string
+          enum: [TRANSPORT, ACCOMMODATION, ATTRACTION, DINING, FEES, OTHER]
+        description:
+          type: string
+          maxLength: 500
+        amount:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+    Conflict:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          conflictId,
+          code,
+          type,
+          severity,
+          message,
+          relatedItemIds,
+          autoFixable,
+          status,
+        ]
+      properties:
+        conflictId:
+          type: string
+          format: uuid
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        type:
+          type: string
+          enum: [TIME, BUDGET, LOCATION, AVAILABILITY, PREFERENCE, EVIDENCE]
+        severity:
+          type: string
+          enum: [ERROR, WARNING, INFO]
+        message:
+          type: string
+          maxLength: 1000
+        fieldPath:
+          type: string
+        relatedItemIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        autoFixable:
+          type: boolean
+        status:
+          type: string
+          enum: [OPEN, RESOLVED, ACCEPTED]
+    Evidence:
+      type: object
+      additionalProperties: false
+      required: [evidenceId, sourceType, sourceId, title, excerpt, retrievedAt]
+      properties:
+        evidenceId:
+          type: string
+          format: uuid
+        sourceType:
+          type: string
+          enum: [PUBLIC_KNOWLEDGE, USER_MEMORY, DOCUMENT, PROVIDER, GRAPH]
+        sourceId:
+          type: string
+          maxLength: 200
+        title:
+          type: string
+          maxLength: 500
+        excerpt:
+          type: string
+          maxLength: 3000
+        url:
+          type: string
+          format: uri
+        retrievedAt:
+          $ref: "#/components/schemas/Instant"
+    AgentResult:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          agentResultId,
+          taskId,
+          agentType,
+          status,
+          result,
+          evidenceIds,
+          errors,
+          createdAt,
+        ]
+      properties:
+        agentResultId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        agentType:
+          type: string
+          maxLength: 100
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        result:
+          type: object
+        evidenceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+
+    AgentExecutionStatus:
+      type: string
+      enum: [QUEUED, RUNNING, SUCCEEDED, DEGRADED, FAILED, TIMEOUT, SKIPPED]
+    AgentExecutionWarning:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        message:
+          type: string
+          maxLength: 1000
+    AgentExecution:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          agentExecutionId,
+          taskId,
+          agentName,
+          status,
+          summary,
+          evidenceCount,
+          warnings,
+        ]
+      properties:
+        agentExecutionId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        agentName:
+          type: string
+          maxLength: 100
+        status:
+          $ref: "#/components/schemas/AgentExecutionStatus"
+        summary:
+          type: string
+          maxLength: 1000
+        evidenceCount:
+          type: integer
+          minimum: 0
+        warnings:
+          type: array
+          maxItems: 50
+          items:
+            $ref: "#/components/schemas/AgentExecutionWarning"
+        durationMs:
+          type: integer
+          format: int64
+          minimum: 0
+        startedAt:
+          $ref: "#/components/schemas/Instant"
+        completedAt:
+          $ref: "#/components/schemas/Instant"
+    AgentExecutionList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/AgentExecution"
+
+    TaskStatus:
+      type: string
+      enum:
+        [
+          CREATED,
+          QUEUED,
+          RUNNING,
+          WAITING_CONFIRMATION,
+          SUCCEEDED,
+          PARTIAL_SUCCESS,
+          FAILED,
+          CANCELLED,
+        ]
+    TaskType:
+      type: string
+      enum: [DOCUMENT_PARSE, PLAN_GENERATION, PLAN_REPLAN, EVALUATION_REPLAY]
+    TaskAccepted:
+      type: object
+      additionalProperties: false
+      required: [taskId, resourceId, status, traceId, createdAt]
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        resourceId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+    TaskRecord:
+      type: object
+      additionalProperties: false
+      required:
+        - taskId
+        - type
+        - resourceId
+        - status
+        - stage
+        - progress
+        - traceId
+        - resultResourceIds
+        - retryable
+        - recoveryAttempts
+        - degradedComponents
+        - createdAt
+        - updatedAt
+      properties:
+        taskId:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/TaskType"
+        resourceId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/TaskStatus"
+        stage:
+          type: string
+          maxLength: 100
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        message:
+          type: string
+          maxLength: 1000
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        resultResourceIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        failureCode:
+          type: [string, "null"]
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        failureReason:
+          type: [string, "null"]
+          maxLength: 1000
+        retryable:
+          type: boolean
+        recoveryAttempts:
+          type: integer
+          minimum: 0
+        degradedComponents:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            pattern: "^[A-Z][A-Z0-9_]+$"
+        retryOfTaskId:
+          type: [string, "null"]
+          format: uuid
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+    TaskEvent:
+      type: object
+      additionalProperties: false
+      required: [eventId, taskId, stage, progress, message, timestamp]
+      properties:
+        eventId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        stage:
+          type: string
+          maxLength: 100
+        progress:
+          type: integer
+          minimum: 0
+          maximum: 100
+        message:
+          type: string
+          maxLength: 1000
+        timestamp:
+          $ref: "#/components/schemas/Instant"
+
+    DeadLetterStatus:
+      type: string
+      enum: [PENDING, REPLAYED]
+    ReplayDeadLetterRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    DeadLetterRecord:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          deadLetterId,
+          originalEventId,
+          originalTopic,
+          originalEventType,
+          eventVersion,
+          correlationId,
+          causationId,
+          traceId,
+          taskId,
+          failureCode,
+          failureReason,
+          status,
+          replayCount,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        deadLetterId:
+          type: string
+          format: uuid
+        originalEventId:
+          type: string
+          format: uuid
+        originalTopic:
+          type: string
+          maxLength: 200
+        originalEventType:
+          type: string
+          maxLength: 200
+        eventVersion:
+          type: string
+          pattern: '^\d+\.\d+\.\d+$'
+        correlationId:
+          type: string
+          format: uuid
+        causationId:
+          type: string
+          format: uuid
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        taskId:
+          type: string
+          format: uuid
+        failureCode:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        failureReason:
+          type: string
+          maxLength: 1000
+        status:
+          $ref: "#/components/schemas/DeadLetterStatus"
+        replayCount:
+          type: integer
+          minimum: 0
+        replayEventId:
+          type: [string, "null"]
+          format: uuid
+        replayTaskId:
+          type: [string, "null"]
+          format: uuid
+        replayReason:
+          type: [string, "null"]
+          maxLength: 500
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+    DeadLetterList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 200
+          items:
+            $ref: "#/components/schemas/DeadLetterRecord"
+
+    GuardedActionType:
+      type: string
+      enum: [ORDER_CREATE, PAYMENT, CANCELLATION, REAL_COST]
+    GuardedActionStatus:
+      type: string
+      enum: [PENDING_CONFIRMATION, CONFIRMED, REJECTED, EXPIRED, EXECUTED]
+    CreateGuardedActionRequest:
+      type: object
+      additionalProperties: false
+      required: [type, resourceId, riskDescription, amount, currency, expiresAt]
+      properties:
+        type:
+          $ref: "#/components/schemas/GuardedActionType"
+        resourceId:
+          type: string
+          format: uuid
+        riskDescription:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        amount:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+        expiresAt:
+          $ref: "#/components/schemas/Instant"
+    ConfirmGuardedActionRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          actionId,
+          expectedVersion,
+          acknowledgedRisk,
+          acknowledgedAmount,
+          currency,
+        ]
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        expectedVersion:
+          type: integer
+          minimum: 0
+        acknowledgedRisk:
+          type: boolean
+          const: true
+        acknowledgedAmount:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+    RejectGuardedActionRequest:
+      type: object
+      additionalProperties: false
+      required: [actionId, expectedVersion, reason]
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        expectedVersion:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+    ActionAuditRecord:
+      type: object
+      additionalProperties: false
+      required: [auditId, actionId, actorId, eventType, occurredAt, traceId]
+      properties:
+        auditId:
+          type: string
+          format: uuid
+        actionId:
+          type: string
+          format: uuid
+        actorId:
+          type: string
+          maxLength: 128
+        eventType:
+          type: string
+          enum: [PROPOSED, CONFIRMED, REJECTED, EXPIRED, EXECUTED]
+        reason:
+          type: [string, "null"]
+          maxLength: 500
+        occurredAt:
+          $ref: "#/components/schemas/Instant"
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+    GuardedAction:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          actionId,
+          type,
+          resourceId,
+          status,
+          riskDescription,
+          amount,
+          currency,
+          expiresAt,
+          proposedBy,
+          version,
+          auditTrail,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        actionId:
+          type: string
+          format: uuid
+        type:
+          $ref: "#/components/schemas/GuardedActionType"
+        resourceId:
+          type: string
+          format: uuid
+        status:
+          $ref: "#/components/schemas/GuardedActionStatus"
+        riskDescription:
+          type: string
+          maxLength: 1000
+        amount:
+          $ref: "#/components/schemas/DecimalAmount"
+        currency:
+          $ref: "#/components/schemas/Currency"
+        expiresAt:
+          $ref: "#/components/schemas/Instant"
+        proposedBy:
+          type: string
+          maxLength: 128
+        confirmedBy:
+          type: [string, "null"]
+          maxLength: 128
+        version:
+          type: integer
+          minimum: 0
+        auditTrail:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionAuditRecord"
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+
+    CreateEvaluationRunRequest:
+      type: object
+      additionalProperties: false
+      required: [datasetVersion]
+      properties:
+        datasetVersion:
+          type: string
+          pattern: "^[a-z0-9][a-z0-9._-]{2,63}$"
+        caseIds:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            pattern: "^[a-z0-9][a-z0-9._-]{2,99}$"
+    EvaluationRunStatus:
+      type: string
+      enum: [QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED]
+    EvaluationMetrics:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          itineraryExecutabilityRate,
+          constraintConflictRate,
+          evidenceCoverageRate,
+          toolCallSuccessRate,
+          structuredOutputValidityRate,
+          replanSuccessRate,
+          endToEndLatencyMs,
+          tokenUsage,
+        ]
+      properties:
+        itineraryExecutabilityRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        constraintConflictRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        evidenceCoverageRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        toolCallSuccessRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        structuredOutputValidityRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        replanSuccessRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        endToEndLatencyMs:
+          type: integer
+          minimum: 0
+        tokenUsage:
+          type: integer
+          minimum: 0
+    EvaluationCaseResult:
+      type: object
+      additionalProperties: false
+      required: [caseId, category, passed, latencyMs, tokenUsage, observedCodes]
+      properties:
+        caseId:
+          type: string
+        category:
+          type: string
+        passed:
+          type: boolean
+        latencyMs:
+          type: integer
+          minimum: 0
+        tokenUsage:
+          type: integer
+          minimum: 0
+        failureCode:
+          type: [string, "null"]
+        observedCodes:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+    EvaluationEnvironment:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          applicationVersion,
+          javaVersion,
+          os,
+          modelProvider,
+          modelName,
+          mockMode,
+        ]
+      properties:
+        applicationVersion:
+          type: string
+        javaVersion:
+          type: string
+        os:
+          type: string
+        modelProvider:
+          type: string
+        modelName:
+          type: string
+        mockMode:
+          type: boolean
+    EvaluationRun:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          runId,
+          taskId,
+          datasetVersion,
+          status,
+          sampleSize,
+          cases,
+          environment,
+          traceId,
+          startedAt,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        runId:
+          type: string
+          format: uuid
+        taskId:
+          type: string
+          format: uuid
+        datasetVersion:
+          type: string
+        status:
+          $ref: "#/components/schemas/EvaluationRunStatus"
+        sampleSize:
+          type: integer
+          minimum: 0
+        metrics:
+          oneOf:
+            - $ref: "#/components/schemas/EvaluationMetrics"
+            - type: "null"
+        cases:
+          type: array
+          items:
+            $ref: "#/components/schemas/EvaluationCaseResult"
+        environment:
+          $ref: "#/components/schemas/EvaluationEnvironment"
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        startedAt:
+          type: [string, "null"]
+          format: date-time
+        completedAt:
+          type: [string, "null"]
+          format: date-time
+        createdAt:
+          $ref: "#/components/schemas/Instant"
+        updatedAt:
+          $ref: "#/components/schemas/Instant"
+
+    FeedbackFields:
+      type: object
+      required: [tripId, rating, comment, tags]
+      properties:
+        tripId:
+          type: string
+          format: uuid
+        planId:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+          maxLength: 5000
+        tags:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 100
+    CreateFeedbackRequest:
+      allOf:
+        - $ref: "#/components/schemas/FeedbackFields"
+      unevaluatedProperties: false
+    Feedback:
+      allOf:
+        - $ref: "#/components/schemas/FeedbackFields"
+        - type: object
+          required: [feedbackId, createdAt]
+          properties:
+            feedbackId:
+              type: string
+              format: uuid
+            createdAt:
+              $ref: "#/components/schemas/Instant"
+      unevaluatedProperties: false
+
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message, details, traceId, timestamp]
+      properties:
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        message:
+          type: string
+          maxLength: 1000
+        details:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorDetail"
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        timestamp:
+          $ref: "#/components/schemas/Instant"
+    ErrorDetail:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        field:
+          type: string
+          description: RFC 6901 JSON Pointer
+        code:
+          type: string
+          pattern: "^[A-Z][A-Z0-9_]+$"
+        message:
+          type: string
+          maxLength: 500

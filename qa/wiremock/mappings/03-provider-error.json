@@ -1,0 +1,21 @@
+{
+  "priority": 1,
+  "request": {
+    "method": "ANY",
+    "urlPathPattern": "/(maps/.*|tools/(weather|exchange-rate|route))",
+    "headers": {
+      "X-QA-Scenario": {
+        "equalTo": "error"
+      }
+    }
+  },
+  "response": {
+    "status": 503,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "code": "SYNTHETIC_PROVIDER_UNAVAILABLE"
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "staleOutboxSeconds": 300,
+  "longRunningTaskSeconds": 300,
+  "staleInboxSeconds": 300,
+  "maximumViolations": 0,
+  "sampleLimit": 20,
+  "eventualConsistencyTimeoutSeconds": 30,
+  "pollIntervalSeconds": 1
+}

@@ -1,0 +1,119 @@
+services:
+  jaeger:
+    environment:
+      SPAN_STORAGE_TYPE: memory
+    restart: "no"
+
+  wiremock:
+    image: wiremock/wiremock:3.13.1
+    command: ["--disable-gzip", "--no-request-journal"]
+    ports:
+      - "127.0.0.1:${WIREMOCK_PORT:-9099}:8080"
+    volumes:
+      - ./qa/wiremock:/home/wiremock:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://localhost:8080/__admin/health || exit 1",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      - tripagent
+    restart: "no"
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    ports:
+      - "127.0.0.1:${TOXIPROXY_API_PORT:-8474}:8474"
+    healthcheck:
+      test: ["CMD", "/toxiproxy-cli", "-host=localhost:8474", "list"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+    networks:
+      - tripagent
+    restart: "no"
+
+  toxiproxy-config:
+    image: curlimages/curl:8.12.1
+    depends_on:
+      toxiproxy:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ai-retrieval-service:
+        condition: service_healthy
+    volumes:
+      - ./qa/chaos/configure-toxiproxy.sh:/configure-toxiproxy.sh:ro
+    entrypoint: ["/bin/sh", "/configure-toxiproxy.sh"]
+    networks:
+      - tripagent
+    restart: "no"
+
+  ai-retrieval-service:
+    environment:
+      APP_ENV: test
+      AI_SERVICE_TOKEN: test-service-token
+      DEEPSEEK_API_KEY: ""
+      DEEPSEEK_BASE_URL: http://127.0.0.1:65535
+      ALLOWED_EXTERNAL_HOSTS: localhost,127.0.0.1
+      DOCUMENT_PARSER_MODE: mock
+      RETRIEVAL_PROVIDER_MODE: mock
+      GRAPH_STORE_MODE: memory
+      LANCEDB_URI: /var/lib/tripagent/lancedb
+      OTEL_ENABLED: "false"
+    volumes:
+      - ${QA_LANCEDB_DIR:-./.runtime/test-env/lancedb}:/var/lib/tripagent/lancedb
+
+  trip-agent-api:
+    environment:
+      SPRING_PROFILES_ACTIVE: test,mock-model
+      SPRING_AI_MODEL_CHAT: none
+      SPRING_DATASOURCE_URL: jdbc:postgresql://toxiproxy:15432/${POSTGRES_DATABASE:-tripagent}
+      SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT: ${QA_DB_CONNECTION_TIMEOUT_MS:-30000}
+      SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE: ${QA_HIKARI_POOL_SIZE:-20}
+      APP_ASYNC_GOVERNANCE_PLAN_CONSUMER_CONCURRENCY: ${QA_PLAN_CONSUMER_CONCURRENCY:-8}
+      APP_ASYNC_GOVERNANCE_DOCUMENT_CONSUMER_CONCURRENCY: ${QA_DOCUMENT_CONSUMER_CONCURRENCY:-4}
+      SPRING_DATA_REDIS_HOST: toxiproxy
+      SPRING_DATA_REDIS_PORT: 16379
+      SPRING_KAFKA_ADMIN_AUTO_CREATE: "true"
+      AI_RETRIEVAL_BASE_URL: http://toxiproxy:18000
+      AI_SERVICE_TOKEN: test-service-token
+      DEEPSEEK_API_KEY: ""
+      MODEL_GATEWAY_PROVIDER: mock
+      DOCUMENT_PARSER_MODE: mock
+      RETRIEVAL_PROVIDER_MODE: mock
+      GRAPH_STORE_MODE: memory
+      MCP_PROVIDER_MODE: MOCK
+      MCP_SERVICE_TOKEN: test-service-token
+      PLANNING_PROVIDER_MODE: MOCK
+      APP_AGENTS_ENABLED: "true"
+      APP_ASYNC_GOVERNANCE_ENABLED: "true"
+      APP_ASYNC_GOVERNANCE_REDIS_ENABLED: "true"
+      APP_DOCUMENT_PROCESSING_MESSAGING_ENABLED: "true"
+      APP_HEALTH_AI_RETRIEVAL_ENABLED: "true"
+      APP_HEALTH_KAFKA_ENABLED: "true"
+      APP_PLANNING_ENABLED: "true"
+      APP_AI_RETRIEVAL_BASE_URL: http://toxiproxy:18000
+      APP_DEVELOPER_TOOLS_ENABLED: "true"
+      APP_DEVELOPER_TOOLS_JAEGER_BASE_URL: http://jaeger:16686
+      APP_MAPS_ENABLED: "true"
+      APP_MAPS_TILE_BASE_URL: http://wiremock:8080/maps
+      FRONTEND_ALLOWED_ORIGINS: http://127.0.0.1:4173,http://localhost:4173
+      APP_MCP_BASE_URL: http://trip-agent-api:8080
+      ALLOWED_EXTERNAL_HOSTS: localhost,127.0.0.1,ai-retrieval-service,trip-agent-api,postgres,redis,kafka,neo4j,toxiproxy,wiremock
+      REAL_MODEL_TEST_ENABLED: "false"
+      OTEL_TRACES_SAMPLER_ARG: "0"
+      APP_UPLOAD_STORAGE_ROOT: /var/lib/tripagent/uploads
+    depends_on:
+      toxiproxy-config:
+        condition: service_completed_successfully
+      wiremock:
+        condition: service_healthy

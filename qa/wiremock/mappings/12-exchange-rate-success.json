@@ -1,0 +1,19 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "urlPath": "/tools/exchange-rate"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "providerMode": "MOCK",
+      "fromCurrency": "CNY",
+      "toCurrency": "USD",
+      "rate": "0.1400"
+    }
+  }
+}

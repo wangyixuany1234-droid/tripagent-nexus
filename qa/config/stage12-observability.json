@@ -1,0 +1,460 @@
+{
+  "schemaVersion": 1,
+  "stage": 12,
+  "version": "stage12-observability-v1",
+  "mode": "OFFLINE_STATIC_PLUS_SIMULATED_ALERTS",
+  "classification": "synthetic_observability_acceptance",
+  "trace": {
+    "requiredComponents": [
+      {
+        "id": "frontend_request",
+        "displayName": "Frontend request",
+        "evidence": [
+          {
+            "path": "apps/web/src/api/client.ts",
+            "needles": ["X-Request-Id", "X-Trace-Id", "setLastTraceId"]
+          }
+        ],
+        "developerTraceProjection": "FRONTEND_RESPONSE_HEADER_ONLY"
+      },
+      {
+        "id": "spring_boot",
+        "displayName": "Spring Boot",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/resources/application.yml",
+            "needles": ["management:", "tracing:", "type: W3C"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/observability/RequestContextFilter.java",
+            "needles": ["X-Trace-Id", "MDC.putCloseable(\"traceId\""]
+          }
+        ],
+        "developerTraceProjection": "RAW_SPAN"
+      },
+      {
+        "id": "kafka_producer",
+        "displayName": "Kafka Producer",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/integration/document/OutboxKafkaPublisher.java",
+            "needles": ["traceparent", "traceParent(event.getTraceId())"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/resources/application.yml",
+            "needles": ["observation-enabled: true"]
+          }
+        ],
+        "developerTraceProjection": "KAFKA"
+      },
+      {
+        "id": "kafka_consumer",
+        "displayName": "Kafka Consumer",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/integration/messaging/EventCausationContext.java",
+            "needles": ["event.traceId()", "SourceEvent"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/integration/planning/PlanRequestedListener.java",
+            "needles": ["@KafkaListener", "EventEnvelope"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/integration/document/DocumentParseRequestedListener.java",
+            "needles": ["@KafkaListener", "event.traceId()"]
+          }
+        ],
+        "developerTraceProjection": "KAFKA"
+      },
+      {
+        "id": "fastapi",
+        "displayName": "FastAPI",
+        "evidence": [
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/observability/tracing.py",
+            "needles": ["FastAPIInstrumentor.instrument_app", "HTTPXClientInstrumentor"]
+          },
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/core/middleware.py",
+            "needles": ["TRACE_ID_HEADER", "bind_contextvars"]
+          }
+        ],
+        "developerTraceProjection": "RAW_SPAN"
+      },
+      {
+        "id": "model_call",
+        "displayName": "Model call",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/integration/model/DefaultModelGateway.java",
+            "needles": ["model.call", "tripagent.model.latency", "tripagent.model.tokens"]
+          },
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/llm/document_vision.py",
+            "needles": ["model.document_vision", "operation.success"]
+          }
+        ],
+        "developerTraceProjection": "MODEL"
+      },
+      {
+        "id": "rag",
+        "displayName": "RAG",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/application/planning/PlanningKnowledgeService.java",
+            "needles": ["rag.retrieval", "tripagent.rag.retrieval"]
+          },
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/retrieval/service.py",
+            "needles": ["@tracer.start_as_current_span(\"rag.retrieval\")", "retrieval.result.count"]
+          }
+        ],
+        "developerTraceProjection": "RAG"
+      },
+      {
+        "id": "neo4j",
+        "displayName": "Neo4j",
+        "evidence": [
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/retrieval/service.py",
+            "needles": ["neo4j.graph_search", "neo4j.public_graph_upsert"]
+          }
+        ],
+        "developerTraceProjection": "RAW_SPAN_ONLY"
+      },
+      {
+        "id": "lancedb",
+        "displayName": "LanceDB",
+        "evidence": [
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/retrieval/service.py",
+            "needles": ["lancedb.public_search", "lancedb.memory_search", "lancedb.public_upsert"]
+          }
+        ],
+        "developerTraceProjection": "RAW_SPAN_ONLY"
+      },
+      {
+        "id": "mcp",
+        "displayName": "MCP",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/skill/OfficialMcpToolGateway.java",
+            "needles": ["mcp.client.call", "tripagent.mcp.tool", "X-Trace-Id"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/skill/McpServerConfiguration.java",
+            "needles": ["mcp.tool.call", "operation.success", "error.type"]
+          }
+        ],
+        "developerTraceProjection": "MCP"
+      },
+      {
+        "id": "a2a",
+        "displayName": "A2A",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/agent/a2a/A2ADelegationService.java",
+            "needles": ["a2a.delegate", "traceId", "operation.success", "error.type"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/agent/AbstractA2aAgent.java",
+            "needles": ["operation.success", "error.type", "span.error"]
+          }
+        ],
+        "developerTraceProjection": "A2A"
+      },
+      {
+        "id": "rule_engine",
+        "displayName": "RuleEngine",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/application/planning/PlanRuleEngine.java",
+            "needles": ["rule.validation", "tripagent.rule.validation"]
+          }
+        ],
+        "developerTraceProjection": "RAW_SPAN_ONLY"
+      }
+    ],
+    "propagation": [
+      {
+        "id": "http_trace_header",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/observability/RequestContextFilter.java",
+            "needles": ["response.setHeader(TRACE_ID_HEADER", "MDC.putCloseable(\"traceId\""]
+          },
+          {
+            "path": "apps/web/src/api/client.ts",
+            "needles": ["response.headers.get(\"X-Trace-Id\")", "setLastTraceId"]
+          }
+        ]
+      },
+      {
+        "id": "kafka_traceparent_header",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/integration/document/OutboxKafkaPublisher.java",
+            "needles": ["traceparent", "traceParent(event.getTraceId())"]
+          }
+        ]
+      },
+      {
+        "id": "task_to_trace_lookup",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/infrastructure/persistence/entity/TaskRecordEntity.java",
+            "needles": ["trace_id", "getTraceId"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/controller/TaskController.java",
+            "needles": ["@GetMapping(\"/{taskId}\")", "taskService.get(taskId)"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/controller/DeveloperTraceController.java",
+            "needles": ["@GetMapping(\"/{traceId}\")", "service.get(traceId)"]
+          }
+        ],
+        "statusIfCovered": "INDIRECT_TASKID_TO_TRACEID"
+      },
+      {
+        "id": "log_trace_correlation",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/resources/logback-spring.xml",
+            "needles": ["traceId=%X{traceId:-}", "sanitizedMessage", "sanitizedThrowable"]
+          }
+        ]
+      }
+    ],
+    "errorSpan": [
+      {
+        "id": "trace_operations_errors",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/observability/TraceOperations.java",
+            "needles": ["error.type", "span.error(exception)", "operation.success"]
+          }
+        ]
+      },
+      {
+        "id": "a2a_mcp_errors",
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/agent/a2a/A2ADelegationService.java",
+            "needles": ["error.type", "span.error(exception)"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/skill/McpServerConfiguration.java",
+            "needles": ["error.type", "span.error(exception)"]
+          }
+        ]
+      }
+    ]
+  },
+  "metrics": {
+    "requiredSignals": [
+      {
+        "id": "http_qps_error_latency",
+        "displayName": "HTTP QPS, error rate, latency",
+        "metricNames": ["http_server_requests_seconds_count", "http_server_requests_seconds_bucket"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/pom.xml",
+            "needles": ["spring-boot-starter-actuator", "micrometer-registry-prometheus"]
+          },
+          {
+            "path": "apps/trip-agent-api/src/main/resources/application.yml",
+            "needles": ["prometheus", "health,info,prometheus"]
+          }
+        ]
+      },
+      {
+        "id": "jvm_heap_gc_threads",
+        "displayName": "JVM heap, GC, threads",
+        "metricNames": ["jvm_memory_used_bytes", "jvm_gc_pause_seconds", "jvm_threads_live_threads"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/pom.xml",
+            "needles": ["spring-boot-starter-actuator", "micrometer-registry-prometheus"]
+          }
+        ]
+      },
+      {
+        "id": "python_cpu_memory_event_loop",
+        "displayName": "Python CPU, memory, event loop delay",
+        "metricNames": ["process_cpu_seconds_total", "tripagent_ai_process_rss_bytes", "tripagent_ai_event_loop_lag_ms"],
+        "evidence": [
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/observability/runtime_metrics.py",
+            "needles": ["processRssBytes", "eventLoopLagP95Ms", "threadCount"]
+          },
+          {
+            "path": "services/ai-retrieval-service/src/trip_agent_ai/api/runtime.py",
+            "needles": ["/runtime-metrics", "RuntimeMetricsService"]
+          }
+        ],
+        "knownGap": "CPU is expected from process exporter or Prometheus runtime integration; current Python endpoint covers memory, threads, and event loop lag."
+      },
+      {
+        "id": "postgres_pool",
+        "displayName": "PostgreSQL connection pool",
+        "metricNames": ["hikaricp_connections_active", "hikaricp_connections_max"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/resources/application.yml",
+            "needles": ["hikari:", "maximum-pool-size"]
+          }
+        ]
+      },
+      {
+        "id": "redis_latency_hit_rate",
+        "displayName": "Redis latency and hit rate",
+        "metricNames": ["lettuce_command_completion_seconds", "cache_gets_total"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/pom.xml",
+            "needles": ["spring-boot-starter-data-redis", "micrometer-registry-prometheus"]
+          }
+        ],
+        "knownGap": "Redis hit-rate depends on enabling Redis/cache instrumentation in the deployed metrics scrape."
+      },
+      {
+        "id": "kafka_lag",
+        "displayName": "Kafka Lag",
+        "metricNames": ["kafka_consumergroup_lag"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/pom.xml",
+            "needles": ["spring-kafka"]
+          },
+          {
+            "path": "infrastructure/prometheus/rules/tripagent-stage12-alerts.yml",
+            "needles": ["kafka_consumergroup_lag", "TripAgentKafkaLagGrowing"]
+          }
+        ],
+        "knownGap": "Requires Kafka exporter or broker JMX exporter in the real environment."
+      },
+      {
+        "id": "agent_success_rate",
+        "displayName": "Agent success rate",
+        "metricNames": ["tripagent_agent_executions_total"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/application/service/AgentExecutionService.java",
+            "needles": ["complete(", "fail(", "AgentStatus"]
+          },
+          {
+            "path": "infrastructure/prometheus/rules/tripagent-stage12-alerts.yml",
+            "needles": ["tripagent_agent_executions_total", "TripAgentAgentFailureRateHigh"]
+          }
+        ],
+        "knownGap": "Domain records status transitions, but the Prometheus counter still needs live exporter verification."
+      },
+      {
+        "id": "model_latency_tokens_error_rate",
+        "displayName": "Model latency, tokens, error rate",
+        "metricNames": ["tripagent_model_latency_seconds", "tripagent_model_tokens_total", "tripagent_model_errors_total"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/integration/model/DefaultModelGateway.java",
+            "needles": ["tripagent.model.latency", "tripagent.model.tokens", "model.call"]
+          },
+          {
+            "path": "infrastructure/prometheus/rules/tripagent-stage12-alerts.yml",
+            "needles": ["tripagent_model_errors_total", "TripAgentModel429RateHigh"]
+          }
+        ],
+        "knownGap": "Latency and token counters exist; model error counters need live exporter or code-level counter verification."
+      },
+      {
+        "id": "mcp_tool_success_rate",
+        "displayName": "MCP tool success rate",
+        "metricNames": ["tripagent_mcp_tool_seconds", "tripagent_mcp_tool_success_ratio"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/skill/OfficialMcpToolGateway.java",
+            "needles": ["tripagent.mcp.tool", "mcp.tool.status"]
+          }
+        ],
+        "knownGap": "Timer exists; status dimension must be confirmed in live Prometheus output."
+      },
+      {
+        "id": "task_backlog_long_running",
+        "displayName": "Task backlog and long RUNNING tasks",
+        "metricNames": ["tripagent_task_backlog_total", "tripagent_task_running_oldest_age_seconds"],
+        "evidence": [
+          {
+            "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/application/task/TaskRecoveryService.java",
+            "needles": ["getStaleTaskThreshold", "TaskStatus.RUNNING"]
+          },
+          {
+            "path": "infrastructure/prometheus/rules/tripagent-stage12-alerts.yml",
+            "needles": ["tripagent_task_running_oldest_age_seconds", "TripAgentLongRunningTasks"]
+          }
+        ],
+        "knownGap": "Requires a live task projection or SQL exporter metric."
+      }
+    ]
+  },
+  "alerts": {
+    "ruleFile": "infrastructure/prometheus/rules/tripagent-stage12-alerts.yml",
+    "requiredAnnotationKeys": ["service", "environment", "impact", "dashboard", "runbook", "correlation"],
+    "faults": [
+      {"id": "api_5xx_rise", "alertName": "TripAgentApi5xxRateHigh", "operator": ">", "threshold": 0.02, "normalValue": 0.001, "faultValue": 0.08, "targetMinutes": 5},
+      {"id": "p95_latency_rise", "alertName": "TripAgentApiP95LatencyHigh", "operator": ">", "threshold": 2, "normalValue": 0.8, "faultValue": 3.5, "targetMinutes": 10},
+      {"id": "kafka_lag_growth", "alertName": "TripAgentKafkaLagGrowing", "operator": ">", "threshold": 100, "normalValue": 0, "faultValue": 350, "targetMinutes": 10},
+      {"id": "db_pool_exhaustion", "alertName": "TripAgentDbPoolSaturation", "operator": ">", "threshold": 0.9, "normalValue": 0.35, "faultValue": 0.98, "targetMinutes": 5},
+      {"id": "model_429", "alertName": "TripAgentModel429RateHigh", "operator": ">", "threshold": 0.1, "normalValue": 0, "faultValue": 0.5, "targetMinutes": 5},
+      {"id": "agent_failure_rate", "alertName": "TripAgentAgentFailureRateHigh", "operator": ">", "threshold": 0.05, "normalValue": 0.01, "faultValue": 0.2, "targetMinutes": 10},
+      {"id": "dead_letter_growth", "alertName": "TripAgentDeadLetterGrowing", "operator": ">", "threshold": 0, "normalValue": 0, "faultValue": 4, "targetMinutes": 5},
+      {"id": "long_running_task", "alertName": "TripAgentLongRunningTasks", "operator": ">", "threshold": 900, "normalValue": 120, "faultValue": 1800, "targetMinutes": 15},
+      {"id": "disk_low", "alertName": "TripAgentDiskCapacityLow", "operator": "<", "threshold": 0.1, "normalValue": 0.4, "faultValue": 0.05, "targetMinutes": 10}
+    ]
+  },
+  "privacy": {
+    "forbiddenPatterns": [
+      "(?i)(?:sk|deepseek)-[A-Za-z0-9][A-Za-z0-9_-]{20,}",
+      "Authorization: Bearer [A-Za-z0-9._~+/=-]+",
+      "\\b1[3-9]\\d{9}\\b",
+      "\\b\\d{17}[0-9Xx]\\b",
+      "order[-_ ]?no\\s*[:=]\\s*[A-Za-z0-9-]{4,}"
+    ],
+    "evidence": [
+      {
+        "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/observability/SensitiveDataSanitizer.java",
+        "needles": ["BEARER", "RAW_API_TOKEN", "CHINESE_MOBILE", "CHINESE_ID", "SENSITIVE_TEXT_FIELD"]
+      },
+      {
+        "path": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/application/service/DeveloperTraceService.java",
+        "needles": ["SensitiveDataSanitizer.sanitize", "normalized.contains(\"prompt\")", "normalized.contains(\"authorization\")"]
+      },
+      {
+        "path": "apps/trip-agent-api/src/main/resources/logback-spring.xml",
+        "needles": ["sanitizedMessage", "sanitizedThrowable"]
+      }
+    ]
+  },
+  "realValidation": {
+    "status": "NOT_EXECUTED",
+    "requiredControls": [
+      "QA_OBSERVABILITY_REAL_ENABLED=true",
+      "bounded traffic window",
+      "separate evidence directory",
+      "Prometheus and Alertmanager endpoint approved",
+      "no real API keys, order originals, full ID numbers, or full user privacy in exported artifacts"
+    ],
+    "requiredScenarios": [
+      "normal traffic false-positive soak",
+      "API 5xx fault injection",
+      "p95 latency fault injection",
+      "Kafka lag growth",
+      "database pool exhaustion",
+      "model 429",
+      "agent failure rate increase",
+      "dead-letter growth",
+      "long-running task",
+      "disk capacity low",
+      "alert recovery"
+    ]
+  }
+}

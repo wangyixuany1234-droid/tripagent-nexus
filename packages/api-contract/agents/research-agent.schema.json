@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/research-agent.schema.json",
+  "title": "ResearchAgent Contract",
+  "x-agent-card": {
+    "name": "ResearchAgent",
+    "description": "Researches destinations and packages traceable evidence.",
+    "version": "1.0.0",
+    "skills": ["place_search", "weather_query", "opening_hours"],
+    "timeoutMs": 35000,
+    "retry": { "maxAttempts": 3, "initialBackoffMs": 300 },
+    "errorCodes": [
+      "RESEARCH_INPUT_INVALID",
+      "RESEARCH_OUTPUT_INVALID",
+      "RESEARCH_EVIDENCE_INSUFFICIENT",
+      "RESEARCH_TOOL_UNAVAILABLE"
+    ],
+    "allowDegraded": true,
+    "promptTemplateVersion": "research-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "destinations", "researchQuestions"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "destinations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "researchQuestions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "destinationSummary",
+        "candidateAreas",
+        "evidenceInsufficient"
+      ],
+      "properties": {
+        "destinationSummary": { "type": "string", "maxLength": 5000 },
+        "candidateAreas": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidenceInsufficient": { "type": "boolean" }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "ResearchAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

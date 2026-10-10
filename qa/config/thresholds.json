@@ -1,0 +1,271 @@
+{
+  "coverage": {
+    "java": {
+      "instruction": 0.75,
+      "branch": 0.6
+    },
+    "python": {
+      "line": 80,
+      "branch": 70
+    },
+    "frontendBaseline": {
+      "lines": 7,
+      "functions": 25,
+      "branches": 48,
+      "statements": 7
+    },
+    "frontendTarget": {
+      "lines": 80,
+      "functions": 75,
+      "branches": 70,
+      "statements": 80
+    },
+    "backendFunctional": {
+      "java": {
+        "domainAndRulesLine": {
+          "minimum": 0.85,
+          "includes": [
+            "com/tripagent/nexus/application/document/BookingRuleValidator.java",
+            "com/tripagent/nexus/application/planning/PlanRuleEngine.java",
+            "com/tripagent/nexus/domain/model/AgentExecution.java",
+            "com/tripagent/nexus/domain/model/BudgetSummary.java",
+            "com/tripagent/nexus/domain/model/DomainEnums.java",
+            "com/tripagent/nexus/domain/model/GuardedAction.java",
+            "com/tripagent/nexus/domain/model/PlanComparison.java",
+            "com/tripagent/nexus/domain/model/ReplanInputSnapshot.java",
+            "com/tripagent/nexus/domain/model/TaskRecord.java"
+          ]
+        },
+        "applicationServiceLine": {
+          "minimum": 0.8,
+          "includes": [
+            "com/tripagent/nexus/application/service/*.java"
+          ]
+        },
+        "controllerLine": {
+          "minimum": 0.75,
+          "includes": [
+            "com/tripagent/nexus/controller/*.java"
+          ]
+        }
+      },
+      "python": {
+        "routeLine": {
+          "minimum": 0.75,
+          "includes": [
+            "*src/trip_agent_ai/api/*.py"
+          ]
+        }
+      }
+    }
+  },
+  "contract": {
+    "maxExamples": 40,
+    "requestTimeoutSeconds": 10
+  },
+  "performance": {
+    "synchronous": {
+      "p95Milliseconds": 500,
+      "p99Milliseconds": 1000,
+      "errorRate": 0.01
+    },
+    "write": {
+      "p95Milliseconds": 800,
+      "p99Milliseconds": 1500,
+      "errorRate": 0.01
+    },
+    "async": {
+      "submitP95Milliseconds": 800,
+      "submitP99Milliseconds": 1500,
+      "errorRate": 0.01,
+      "completionP95Milliseconds": 30000,
+      "maximumStuckRate": 0,
+      "maximumDuplicateResources": 0
+    },
+    "sseConnection": {
+      "minimumSuccessRate": 0.99,
+      "maximumDuplicateEvents": 0,
+      "maximumLostEvents": 0,
+      "maximumServerCpuPercent": 90
+    },
+    "recovery": {
+      "maximumFinalKafkaLag": 0,
+      "maximumFinalHikariActiveIncrease": 1,
+      "maximumFinalHikariPending": 0,
+      "maximumFinalThreadGrowthPercent": 20,
+      "maximumFinalRedisClientIncrease": 2,
+      "maximumFinalTcpConnectionIncrease": 5
+    },
+    "smoke": {
+      "virtualUsers": 2,
+      "duration": "5m"
+    },
+    "load": {
+      "stages": [
+        {
+          "duration": "2m",
+          "target": 25
+        },
+        {
+          "duration": "10m",
+          "target": 25
+        },
+        {
+          "duration": "2m",
+          "target": 50
+        },
+        {
+          "duration": "10m",
+          "target": 50
+        },
+        {
+          "duration": "2m",
+          "target": 100
+        },
+        {
+          "duration": "10m",
+          "target": 100
+        },
+        {
+          "duration": "2m",
+          "target": 0
+        }
+      ]
+    },
+    "stress": {
+      "stages": [
+        {
+          "duration": "2m",
+          "target": 100
+        },
+        {
+          "duration": "5m",
+          "target": 100
+        },
+        {
+          "duration": "2m",
+          "target": 200
+        },
+        {
+          "duration": "5m",
+          "target": 200
+        },
+        {
+          "duration": "2m",
+          "target": 400
+        },
+        {
+          "duration": "5m",
+          "target": 400
+        },
+        {
+          "duration": "3m",
+          "target": 0
+        }
+      ]
+    },
+    "spike": {
+      "stages": [
+        {
+          "duration": "1m",
+          "target": 20
+        },
+        {
+          "duration": "30s",
+          "target": 300
+        },
+        {
+          "duration": "2m",
+          "target": 300
+        },
+        {
+          "duration": "30s",
+          "target": 20
+        },
+        {
+          "duration": "2m",
+          "target": 20
+        },
+        {
+          "duration": "1m",
+          "target": 0
+        }
+      ]
+    },
+    "soak": {
+      "virtualUsers": 50,
+      "duration": "2h",
+      "maximumDuration": "8h",
+      "maxRssGrowthPercent": 15,
+      "maxThreadGrowthPercent": 20,
+      "maxLanceDbGrowthBytes": 104857600,
+      "maxUploadGrowthBytes": 536870912,
+      "maxPythonEventLoopLagP95Milliseconds": 100,
+      "maximumFinalKafkaLag": 0,
+      "maximumFinalHikariActiveIncrease": 1,
+      "maximumFinalHikariPending": 0,
+      "maximumFinalTcpConnectionIncrease": 5,
+      "maximumRunningTasks": 0
+    },
+    "sse": {
+      "stages": [
+        {
+          "duration": "1m",
+          "target": 100
+        },
+        {
+          "duration": "2m",
+          "target": 100
+        },
+        {
+          "duration": "2m",
+          "target": 500
+        },
+        {
+          "duration": "3m",
+          "target": 500
+        },
+        {
+          "duration": "3m",
+          "target": 1000
+        },
+        {
+          "duration": "5m",
+          "target": 1000
+        },
+        {
+          "duration": "3m",
+          "target": 0
+        }
+      ]
+    },
+    "idempotency": {
+      "virtualUsers": 20,
+      "iterations": 20,
+      "maximumDuplicateResources": 0
+    },
+    "race": {
+      "virtualUsers": 20,
+      "iterations": 20,
+      "maximumSilentOverwrites": 0
+    },
+    "canary": {
+      "virtualUsers": 2,
+      "maximumCalls": 5
+    }
+  },
+  "resilience": {
+    "recoveryTimeoutSeconds": 30,
+    "maximumDataLossCount": 0,
+    "maximumDuplicateSideEffects": 0
+  },
+  "realModel": {
+    "maxConcurrency": 2,
+    "maxCalls": 5,
+    "requestTimeoutSeconds": 60
+  },
+  "security": {
+    "maximumCriticalFindings": 0,
+    "maximumHighFindings": 0
+  }
+}

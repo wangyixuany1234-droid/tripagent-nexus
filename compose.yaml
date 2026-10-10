@@ -1,0 +1,359 @@
+name: tripagent-nexus
+
+services:
+  postgres:
+    image: postgres:17.11-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DATABASE:-tripagent}
+      POSTGRES_USER: ${POSTGRES_USERNAME:-tripagent}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.8-alpine
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    command:
+      - sh
+      - -ec
+      - exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'redis-cli --no-auth-warning -a "$${REDIS_PASSWORD}" ping | grep -q PONG',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  kafka:
+    image: apache/kafka:3.9.2
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: CONTROLLER://:29093,PLAINTEXT://:29092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,EXTERNAL://localhost:${KAFKA_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "127.0.0.1:${KAFKA_PORT:-9092}:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:29092 --list >/dev/null 2>&1",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 20
+      start_period: 20s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  neo4j:
+    image: neo4j:5.26.30-community
+    environment:
+      NEO4J_AUTH: ${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+    ports:
+      - "127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474"
+      - "127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'cypher-shell -u "$${NEO4J_AUTH%%/*}" -p "$${NEO4J_AUTH#*/}" ''RETURN 1'' >/dev/null 2>&1',
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+      SPAN_STORAGE_TYPE: badger
+      BADGER_EPHEMERAL: "false"
+      BADGER_DIRECTORY_VALUE: /badger/data
+      BADGER_DIRECTORY_KEY: /badger/key
+    ports:
+      - "127.0.0.1:${JAEGER_UI_PORT:-16686}:16686"
+    volumes:
+      - jaeger_data:/badger
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:16686/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.160.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./infrastructure/otel-collector/config.yaml:/etc/otelcol-contrib/config.yaml:ro
+    ports:
+      - "127.0.0.1:${OTEL_GRPC_PORT:-4317}:4317"
+      - "127.0.0.1:${OTEL_HTTP_PORT:-4318}:4318"
+      - "127.0.0.1:${OTEL_PROMETHEUS_PORT:-9464}:9464"
+      - "127.0.0.1:${OTEL_HEALTH_PORT:-13133}:13133"
+    depends_on:
+      jaeger:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "/otelcol-contrib",
+          "validate",
+          "--config=/etc/otelcol-contrib/config.yaml",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  ai-retrieval-service:
+    build:
+      context: ./services/ai-retrieval-service
+    environment:
+      APP_ENV: development
+      AI_RETRIEVAL_SERVICE_PORT: 8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?AI_SERVICE_TOKEN is required}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-deepseek-chat}
+      DEEPSEEK_EMBEDDING_MODEL: ${DEEPSEEK_EMBEDDING_MODEL:-deepseek-embedding}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DOCUMENT_PARSER_MODE: ${DOCUMENT_PARSER_MODE:-deepseek}
+      RETRIEVAL_PROVIDER_MODE: ${RETRIEVAL_PROVIDER_MODE:-deepseek}
+      RETRIEVAL_EMBEDDING_DIMENSIONS: ${RETRIEVAL_EMBEDDING_DIMENSIONS:-1024}
+      RETRIEVAL_TIMEOUT_SECONDS: ${RETRIEVAL_TIMEOUT_SECONDS:-30}
+      RETRIEVAL_MAX_CANDIDATES: ${RETRIEVAL_MAX_CANDIDATES:-40}
+      RETRIEVAL_MIN_RELEVANCE_SCORE: ${RETRIEVAL_MIN_RELEVANCE_SCORE:-0.12}
+      RETRIEVAL_CONTEXT_MAX_CHARS: ${RETRIEVAL_CONTEXT_MAX_CHARS:-6000}
+      GRAPH_STORE_MODE: ${GRAPH_STORE_MODE:-neo4j}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
+      NEO4J_DATABASE: neo4j
+      LANCEDB_URI: /var/lib/tripagent/lancedb
+      LANCEDB_PUBLIC_TABLE: ${LANCEDB_PUBLIC_TABLE:-travel_public}
+      LANCEDB_USER_MEMORY_TABLE: ${LANCEDB_USER_MEMORY_TABLE:-user_memory}
+      OTEL_SERVICE_NAME: ai-retrieval-service
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_ENABLED: "true"
+      LOG_LEVEL: INFO
+    ports:
+      - "127.0.0.1:${AI_RETRIEVAL_SERVICE_PORT:-8000}:8000"
+    volumes:
+      - lancedb_data:/var/lib/tripagent/lancedb
+    depends_on:
+      neo4j:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-m", "trip_agent_ai.core.container_healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  trip-agent-api:
+    build:
+      context: .
+      dockerfile: apps/trip-agent-api/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      SERVER_PORT: 8080
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DATABASE:-tripagent}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USERNAME:-tripagent}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      AI_RETRIEVAL_BASE_URL: http://ai-retrieval-service:8000
+      AI_SERVICE_TOKEN: ${AI_SERVICE_TOKEN:?AI_SERVICE_TOKEN is required}
+      USER_AUTH_ENABLED: ${USER_AUTH_ENABLED:-true}
+      AUTH_ISSUER_URI: ${AUTH_ISSUER_URI:-https://auth.invalid.tripagent.local}
+      AUTH_AUDIENCE: ${AUTH_AUDIENCE:-tripagent-api}
+      AUTH_JWK_SET_URI: ${AUTH_JWK_SET_URI:-http://127.0.0.1:65535/.well-known/jwks.json}
+      PLAN_SUBMISSION_LIMIT_PER_MINUTE: ${PLAN_SUBMISSION_LIMIT_PER_MINUTE:-10}
+      PROMPT_INJECTION_ENABLED: ${PROMPT_INJECTION_ENABLED:-true}
+      ALLOWED_EXTERNAL_HOSTS: ${ALLOWED_EXTERNAL_HOSTS:-localhost,127.0.0.1,ai-retrieval-service,trip-agent-api,api.deepseek.com,tile.openstreetmap.org}
+      MAP_TILES_ENABLED: ${MAP_TILES_ENABLED:-true}
+      MAP_TILE_BASE_URL: ${MAP_TILE_BASE_URL:-https://tile.openstreetmap.org}
+      MAP_TILE_USER_AGENT: ${MAP_TILE_USER_AGENT:-TripAgent-Nexus/0.1}
+      MAP_TILE_CONNECT_TIMEOUT: ${MAP_TILE_CONNECT_TIMEOUT:-3s}
+      MAP_TILE_READ_TIMEOUT: ${MAP_TILE_READ_TIMEOUT:-8s}
+      MAP_TILE_MAX_ZOOM: ${MAP_TILE_MAX_ZOOM:-19}
+      MAP_TILE_MAX_BYTES: ${MAP_TILE_MAX_BYTES:-1048576}
+      DEVELOPER_TOOLS_ENABLED: ${DEVELOPER_TOOLS_ENABLED:-false}
+      JAEGER_BASE_URL: http://jaeger:16686
+      DEVELOPER_TRACE_TIMEOUT: ${DEVELOPER_TRACE_TIMEOUT:-3s}
+      AGENT_ORCHESTRATION_ENABLED: ${AGENT_ORCHESTRATION_ENABLED:-true}
+      MCP_BASE_URL: http://localhost:8080
+      MCP_ENDPOINT: ${MCP_ENDPOINT:-/mcp}
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:?MCP_SERVICE_TOKEN is required}
+      MCP_REQUEST_TIMEOUT: ${MCP_REQUEST_TIMEOUT:-10s}
+      MCP_MAX_REQUEST_SIZE: ${MCP_MAX_REQUEST_SIZE:-1048576}
+      MCP_PROVIDER_MODE: ${MCP_PROVIDER_MODE:-LIVE}
+      MCP_EXPECTED_SERVER_NAME: ${MCP_EXPECTED_SERVER_NAME:-tripagent-tools-mcp}
+      MCP_EXPECTED_SERVER_VERSION: ${MCP_EXPECTED_SERVER_VERSION:-1.0.0}
+      MODEL_MAX_CONCURRENCY: ${MODEL_MAX_CONCURRENCY:-8}
+      MODEL_MAX_TOTAL_CALLS: ${MODEL_MAX_TOTAL_CALLS:-2147483647}
+      PLANNING_ENABLED: ${PLANNING_ENABLED:-true}
+      PLANNING_PROVIDER_MODE: ${PLANNING_PROVIDER_MODE:-LIVE}
+      PLANNING_TENANT_ID: ${PLANNING_TENANT_ID:-00000000-0000-0000-0000-000000000001}
+      PLANNING_TOKEN_BUDGET: ${PLANNING_TOKEN_BUDGET:-12000}
+      PLANNING_CANDIDATE_TARGET: ${PLANNING_CANDIDATE_TARGET:-2}
+      PLANNING_MAX_AUTO_REPLANS: ${PLANNING_MAX_AUTO_REPLANS:-1}
+      PLANNING_DEFAULT_COMMUTE_MINUTES: ${PLANNING_DEFAULT_COMMUTE_MINUTES:-45}
+      ASYNC_GOVERNANCE_ENABLED: ${ASYNC_GOVERNANCE_ENABLED:-true}
+      ASYNC_REDIS_ENABLED: ${ASYNC_REDIS_ENABLED:-true}
+      PLAN_REQUESTED_TOPIC: ${PLAN_REQUESTED_TOPIC:-trip.plan.requested}
+      DOCUMENT_PARSE_REQUESTED_TOPIC: ${DOCUMENT_PARSE_REQUESTED_TOPIC:-document.parse.requested}
+      DOCUMENT_PARSE_COMPLETED_TOPIC: ${DOCUMENT_PARSE_COMPLETED_TOPIC:-document.parse.completed}
+      RETRIEVAL_REQUESTED_TOPIC: ${RETRIEVAL_REQUESTED_TOPIC:-retrieval.requested}
+      AGENT_TASK_REQUESTED_TOPIC: ${AGENT_TASK_REQUESTED_TOPIC:-agent.task.requested}
+      AGENT_TASK_COMPLETED_TOPIC: ${AGENT_TASK_COMPLETED_TOPIC:-agent.task.completed}
+      PLAN_REVIEW_REQUESTED_TOPIC: ${PLAN_REVIEW_REQUESTED_TOPIC:-plan.review.requested}
+      PLAN_COMPLETED_TOPIC: ${PLAN_COMPLETED_TOPIC:-plan.completed}
+      TASK_FAILED_TOPIC: ${TASK_FAILED_TOPIC:-task.failed}
+      DEAD_LETTER_TOPIC: ${DEAD_LETTER_TOPIC:-dead-letter}
+      ASYNC_MAX_ATTEMPTS: ${ASYNC_MAX_ATTEMPTS:-5}
+      ASYNC_INITIAL_BACKOFF: ${ASYNC_INITIAL_BACKOFF:-1s}
+      ASYNC_MAXIMUM_BACKOFF: ${ASYNC_MAXIMUM_BACKOFF:-30s}
+      ASYNC_STALE_TASK_THRESHOLD: ${ASYNC_STALE_TASK_THRESHOLD:-5m}
+      ASYNC_MAX_RECOVERY_ATTEMPTS: ${ASYNC_MAX_RECOVERY_ATTEMPTS:-1}
+      ASYNC_OPERATIONS_TOKEN: ${ASYNC_OPERATIONS_TOKEN:-}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      UPLOAD_STORAGE_ROOT: /var/lib/tripagent/uploads
+      FRONTEND_ALLOWED_ORIGINS: ${FRONTEND_ALLOWED_ORIGINS:-http://localhost:5173}
+      OTEL_SERVICE_NAME: trip-agent-api
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_TRACES_SAMPLER_ARG: ${OTEL_TRACES_SAMPLER_ARG:-1.0}
+    ports:
+      - "127.0.0.1:${TRIP_AGENT_API_PORT:-8080}:8080"
+    volumes:
+      - upload_data:/var/lib/tripagent/uploads
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      ai-retrieval-service:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://localhost:8080/actuator/health/readiness || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8080}
+        VITE_USER_AUTH_ENABLED: ${VITE_USER_AUTH_ENABLED:-true}
+        VITE_OIDC_AUTHORITY: ${VITE_OIDC_AUTHORITY:-https://auth.invalid.tripagent.local}
+        VITE_OIDC_CLIENT_ID: ${VITE_OIDC_CLIENT_ID:-tripagent-web}
+        VITE_OIDC_SCOPE: ${VITE_OIDC_SCOPE:-openid profile}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-5173}:8080"
+    depends_on:
+      trip-agent-api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1",
+        ]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - tripagent
+    restart: unless-stopped
+
+networks:
+  tripagent:
+    name: tripagent-nexus-network
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+  neo4j_data:
+  neo4j_logs:
+  jaeger_data:
+  lancedb_data:
+  upload_data:

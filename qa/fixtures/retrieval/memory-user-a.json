@@ -1,0 +1,106 @@
+{
+  "chunks": [
+    {
+      "chunkId": "dietary-preference",
+      "sourceId": "memory-user-a-dietary",
+      "sourceType": "DIETARY_RESTRICTION",
+      "title": "用户饮食限制",
+      "city": "北京",
+      "region": null,
+      "validFrom": null,
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "用户偏好清淡餐厅，不吃辣，对花生过敏。",
+      "updatedAt": "2026-08-20T00:00:00Z",
+      "metadata": {
+        "consent": "explicit",
+        "synthetic": true
+      }
+    },
+    {
+      "chunkId": "user-a-pace",
+      "sourceId": "memory-user-a-pace",
+      "sourceType": "PACE_PREFERENCE",
+      "title": "用户节奏偏好",
+      "city": null,
+      "region": null,
+      "validFrom": null,
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "用户喜欢宽松节奏，每天安排两到三个主要地点。",
+      "updatedAt": "2026-08-20T00:00:00Z",
+      "metadata": {
+        "consent": "explicit",
+        "synthetic": true
+      }
+    },
+    {
+      "chunkId": "trip-history",
+      "sourceId": "memory-user-a-trip-history",
+      "sourceType": "TRIP_HISTORY",
+      "title": "历史行程",
+      "city": "杭州",
+      "region": null,
+      "validFrom": null,
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "用户曾安排杭州三日文化主题行程，并对博物馆体验评价较高。",
+      "updatedAt": "2026-08-20T00:00:00Z",
+      "metadata": {
+        "consent": "explicit",
+        "synthetic": true
+      }
+    },
+    {
+      "chunkId": "saved-place",
+      "sourceId": "memory-user-a-saved-place",
+      "sourceType": "SAVED_PLACE",
+      "title": "收藏地点",
+      "city": "北京",
+      "region": "东城区",
+      "validFrom": null,
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "用户收藏了国子监和孔庙，倾向历史文化地点。",
+      "updatedAt": "2026-08-20T00:00:00Z",
+      "metadata": {
+        "consent": "explicit",
+        "synthetic": true
+      }
+    },
+    {
+      "chunkId": "budget-preference",
+      "sourceId": "memory-user-a-budget",
+      "sourceType": "BUDGET_PREFERENCE",
+      "title": "预算习惯",
+      "city": null,
+      "region": null,
+      "validFrom": null,
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "用户偏好中等预算，餐饮人均预算约一百元。",
+      "updatedAt": "2026-08-20T00:00:00Z",
+      "metadata": {
+        "consent": "explicit",
+        "synthetic": true
+      }
+    },
+    {
+      "chunkId": "user-feedback",
+      "sourceId": "memory-user-a-feedback",
+      "sourceType": "USER_FEEDBACK",
+      "title": "历史反馈",
+      "city": null,
+      "region": null,
+      "validFrom": null,
+      "validTo": null,
+      "language": "zh-CN",
+      "content": "用户反馈不喜欢连续安排需要长时间排队的热门景点。",
+      "updatedAt": "2026-08-20T00:00:00Z",
+      "metadata": {
+        "consent": "explicit",
+        "synthetic": true
+      }
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "scope": "整应用阶段八验收；不是 Git 差异归因。重复测试失败按根因合并。",
+  "findings": [
+    {
+      "id": "S8-001",
+      "severity": "Critical",
+      "kind": "authorization",
+      "title": "旅行读取缺少可信用户认证，省略或伪造身份头可读取他人旅行",
+      "status": "FIXED",
+      "evidence": "20260916T-stage8-auth-final 的真实 Spring HTTP 探针验证匿名、过期、坏签名、错误 issuer/audience、缺少 sub 均返回 401；跨用户 trip、plan、document、task、feedback、workbench 及修改/枚举请求均返回 404。54 项适用探针全部通过，4 项按契约判定 N/A。",
+      "source": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/infrastructure/config/ApiSecurityConfiguration.java",
+      "scopeLimit": "使用本机 JWK 服务、合成 PostgreSQL 数据和真实 Spring Security/Controller/Service/Repository 链路；未替代外部 OIDC 提供方、最终部署镜像或 TLS 入口验收。",
+      "disposition": "FIXED_VERIFIED",
+      "remediation": "已由校验 issuer、audience、UUID sub 与签名的 JWT principal 取得用户身份；ResourceAuthorizationService 对资源读写统一校验归属并隐藏跨用户资源。",
+      "owner": "后端维护者"
+    },
+    {
+      "id": "S8-002",
+      "severity": "High",
+      "kind": "authorization",
+      "title": "管理员 Trace 授权信任客户端 X-Actor-Role",
+      "status": "FIXED",
+      "evidence": "20260916T-stage8-auth-final 中普通用户访问 Trace 及伪造 X-Actor-Role: ADMIN 均返回 403；管理员角色只从已验证 JWT roles claim 映射，开发工具关闭时服务层始终拒绝。相关定向与 Java 全量测试通过。",
+      "source": "apps/trip-agent-api/src/main/java/com/tripagent/nexus/controller/DeveloperTraceController.java",
+      "scopeLimit": "已验证可信角色边界和脱敏投影；未连接隔离 Jaeger 验证采集端到存储端的原始链路隐私。",
+      "disposition": "FIXED_VERIFIED",
+      "remediation": "已从可信 JwtAuthenticationToken 取得 ADMIN 权限，并保留 developer-tools=false 的强制拒绝。",
+      "owner": "后端维护者"
+    },
+    {
+      "id": "S8-003",
+      "severity": "Medium",
+      "kind": "hardening",
+      "title": "FastAPI Mock 解析入口接受畸形 PDF",
+      "status": "FIXED",
+      "evidence": "20260915T-stage8-targeted-remediation 的 Python 阶段八安全回归 14/14 通过；Mock 与真实解析器共用 PDF 结构校验，两种短小畸形 PDF 均在解析边界拒绝。",
+      "source": "services/ai-retrieval-service/src/trip_agent_ai/ocr/document_validation.py",
+      "scopeLimit": "仅 Mock 解析链，未证明代码执行或文件读写；Java 上传入口具有独立 PDFBox 校验。",
+      "disposition": "FIXED_VERIFIED",
+      "remediation": "Mock 与真实解析器已共享结构校验，并保留大小、页数与像素上限。",
+      "owner": "智能服务维护者"
+    },
+    {
+      "id": "S8-004",
+      "severity": "Medium",
+      "kind": "configuration",
+      "title": "本地 Web 响应缺少 CSP、防嵌入和 nosniff 响应头",
+      "status": "OPEN",
+      "evidence": "ZAP 10020、10038、10021；nosniff 的多个资源告警合并。仓库 nginx.conf 同样未声明这些头。",
+      "source": "apps/web/nginx.conf",
+      "scopeLimit": "动态证据来自 Vite 提供的生产构建产物，未运行 nginx 或 TLS 网关；不外推生产网关配置。",
+      "disposition": "FIX_REQUIRED",
+      "remediation": "在真实入口部署 CSP、frame-ancestors 和 nosniff，再以最终镜像复测；HSTS 仅在 HTTPS 入口验收。",
+      "owner": "前端与平台维护者待指派"
+    },
+    {
+      "id": "S8-005",
+      "severity": "Medium",
+      "kind": "configuration",
+      "title": "FastAPI production 配置未拒绝开发默认凭据",
+      "status": "FIXED",
+      "evidence": "20260915T-stage8-targeted-remediation 的 Python 阶段八安全回归 14/14 通过；production Settings 拒绝仓库公开的开发服务口令和 Neo4j 默认口令。",
+      "source": "services/ai-retrieval-service/src/trip_agent_ai/core/config.py",
+      "scopeLimit": "启动配置校验测试，不代表真实生产环境正在使用这些口令。",
+      "disposition": "FIXED_VERIFIED",
+      "remediation": "生产启动已增加已知开发默认值拒绝策略，凭据必须由外部秘密注入。",
+      "owner": "平台与智能服务维护者"
+    },
+    {
+      "id": "S8-006",
+      "severity": "Low",
+      "kind": "hardening",
+      "title": "FastAPI 未拒绝重复 JSON 键",
+      "status": "FIXED",
+      "evidence": "20260915T-stage8-targeted-remediation 的 Python 阶段八安全回归 14/14 通过；重复 JSON 键在路由解析前被拒绝。",
+      "source": "services/ai-retrieval-service/src/trip_agent_ai/main.py",
+      "scopeLimit": "输入解释歧义，尚未证明授权绕过；因此不提升为 High 或 Medium。",
+      "disposition": "FIXED_VERIFIED",
+      "remediation": "应用解析边界已明确拒绝重复 JSON 键并纳入安全回归。",
+      "owner": "智能服务维护者"
+    }
+  ],
+  "triage": [
+    {
+      "tool": "Semgrep",
+      "rule": "javascript.lang.security.audit.unknown-value-with-script-tag.unknown-value-with-script-tag",
+      "status": "TEST_FIXTURE_NOT_PRODUCTION_SINK",
+      "reason": "命中位于 Playwright 安全回归断言，变量是预先定义的合成 <script> 文本，用于确认对话框按文本渲染且不会执行；不进入生产渲染实现。",
+      "source": "apps/web/e2e/stage9-security.spec.ts"
+    },
+    {
+      "tool": "Semgrep",
+      "rule": "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
+      "status": "NOT_EXPLOITABLE_IN_REVIEWED_PATH",
+      "reason": "健康检查 URL 来自本地进程配置，未发现应用请求能控制端口环境变量的路径，因此不是已证实 SSRF。端口未做数值验证，仍建议加固，不能声称 URL 已严格校验。",
+      "source": "services/ai-retrieval-service/src/trip_agent_ai/core/container_healthcheck.py"
+    },
+    {
+      "tool": "ZAP",
+      "rule": "10109,10027",
+      "status": "INFORMATIONAL",
+      "reason": "SPA 识别与打包注释提示；未发现凭据或业务隐私，不能当作已证实泄露。"
+    },
+    {
+      "tool": "Trivy",
+      "rule": "DS-0026",
+      "status": "LOW_CONTEXTUAL",
+      "reason": "两个 Dockerfile 未自带 HEALTHCHECK；Compose 声明了健康检查。仅 Compose 部署下可由其补足，裸镜像部署仍需补齐。"
+    }
+  ],
+  "acceptances": []
+}

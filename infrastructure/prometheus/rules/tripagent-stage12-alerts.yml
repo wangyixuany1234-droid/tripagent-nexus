@@ -1,0 +1,197 @@
+groups:
+  - name: tripagent-stage12-observability
+    interval: 30s
+    rules:
+      - alert: TripAgentApi5xxRateHigh
+        expr: |
+          (
+            sum by (service, environment) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+            /
+            clamp_min(sum by (service, environment) (rate(http_server_requests_seconds_count[5m])), 0.001)
+          ) > 0.02
+        for: 5m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: api_5xx
+        annotations:
+          summary: "TripAgent API 5xx rate is above the stage 12 threshold."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "Trip planning, document parsing, or operations APIs may fail."
+          dashboard: "dashboards/tripagent/api-overview?var-service=trip-agent-api"
+          runbook: "runbooks/tripagent/api-5xx"
+          correlation: "Join metrics with logs and traces by service, environment, traceId, and taskId."
+
+      - alert: TripAgentApiP95LatencyHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, service, environment) (
+              rate(http_server_requests_seconds_bucket{uri!~"/actuator.*"}[5m])
+            )
+          ) > 2
+        for: 10m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: api_p95_latency
+        annotations:
+          summary: "TripAgent API p95 latency is above 2 seconds."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "Users may see slow planning, task polling, or document operations."
+          dashboard: "dashboards/tripagent/api-overview?panel=latency-p95"
+          runbook: "runbooks/tripagent/api-latency"
+          correlation: "Inspect slow trace spans, request logs, Kafka lag, DB pool, and model latency for the same service/environment."
+
+      - alert: TripAgentKafkaLagGrowing
+        expr: |
+          max by (consumer_group, topic, service, environment) (
+            kafka_consumergroup_lag{consumer_group=~"trip-agent-api.*"}
+          ) > 100
+        for: 10m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: kafka_lag
+        annotations:
+          summary: "TripAgent Kafka consumer lag is growing."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "Asynchronous planning, document parsing, or agent completion may be delayed."
+          dashboard: "dashboards/tripagent/async?panel=kafka-lag"
+          runbook: "runbooks/tripagent/kafka-lag"
+          correlation: "Use topic, consumer_group, taskId, traceId, and dead-letter counters to locate the blocked flow."
+
+      - alert: TripAgentDbPoolSaturation
+        expr: |
+          max by (pool, service, environment) (
+            hikaricp_connections_active / clamp_min(hikaricp_connections_max, 1)
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: db_pool
+        annotations:
+          summary: "TripAgent PostgreSQL connection pool is near exhaustion."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "Requests and async consumers may queue or fail while waiting for database connections."
+          dashboard: "dashboards/tripagent/database?panel=hikari-pool"
+          runbook: "runbooks/tripagent/db-pool"
+          correlation: "Compare DB pool metrics with HTTP latency, repository spans, and logs carrying the same traceId."
+
+      - alert: TripAgentModel429RateHigh
+        expr: |
+          sum by (provider, model, service, environment) (
+            rate(tripagent_model_errors_total{error_type=~"429|RATE_LIMIT|RateLimit|TooManyRequests"}[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: model_429
+        annotations:
+          summary: "TripAgent model gateway is receiving 429 or rate-limit errors."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "Agent generation, OCR extraction, or RAG reranking may degrade or fail."
+          dashboard: "dashboards/tripagent/model?panel=429-rate"
+          runbook: "runbooks/tripagent/model-429"
+          correlation: "Follow model.call spans by traceId and compare token, latency, and error metrics by provider/model."
+
+      - alert: TripAgentAgentFailureRateHigh
+        expr: |
+          (
+            sum by (agent_name, service, environment) (
+              rate(tripagent_agent_executions_total{status=~"FAILED|TIMEOUT"}[10m])
+            )
+            /
+            clamp_min(
+              sum by (agent_name, service, environment) (rate(tripagent_agent_executions_total[10m])),
+              0.001
+            )
+          ) > 0.05
+        for: 10m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: agent_failure
+        annotations:
+          summary: "TripAgent agent failure rate is above 5 percent."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "Multi-agent planning quality or completion rate may be degraded."
+          dashboard: "dashboards/tripagent/agent?panel=failure-rate"
+          runbook: "runbooks/tripagent/agent-failure"
+          correlation: "Open the taskId, A2A delegate spans, MCP tool metrics, model metrics, and sanitized agent logs."
+
+      - alert: TripAgentDeadLetterGrowing
+        expr: |
+          sum by (topic, service, environment) (
+            increase(tripagent_dead_letter_events_total[10m])
+          ) > 0
+        for: 5m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: dead_letter
+        annotations:
+          summary: "TripAgent dead-letter events are increasing."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "A task or event flow may require operator replay or data correction."
+          dashboard: "dashboards/tripagent/async?panel=dead-letter"
+          runbook: "runbooks/tripagent/dead-letter"
+          correlation: "Use topic, eventId, taskId, traceId, and the operations dead-letter view to inspect the failure."
+
+      - alert: TripAgentLongRunningTasks
+        expr: |
+          max by (task_type, service, environment) (
+            tripagent_task_running_oldest_age_seconds
+          ) > 900
+        for: 15m
+        labels:
+          severity: page
+          service: trip-agent-api
+          stage: "12"
+          signal: long_running_task
+        annotations:
+          summary: "TripAgent has tasks stuck in RUNNING state for too long."
+          service: "trip-agent-api"
+          environment: "{{ $labels.environment }}"
+          impact: "Users may not receive terminal task status, and retries may be blocked."
+          dashboard: "dashboards/tripagent/tasks?panel=long-running"
+          runbook: "runbooks/tripagent/long-running-task"
+          correlation: "Start from taskId, then inspect its traceId, Kafka events, A2A spans, and dead-letter records."
+
+      - alert: TripAgentDiskCapacityLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"}
+            /
+            clamp_min(node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}, 1)
+          ) < 0.1
+        for: 10m
+        labels:
+          severity: page
+          service: tripagent-platform
+          stage: "12"
+          signal: disk_capacity
+        annotations:
+          summary: "TripAgent host disk capacity is below 10 percent."
+          service: "tripagent-platform"
+          environment: "{{ $labels.environment }}"
+          impact: "Uploads, LanceDB, Jaeger storage, PostgreSQL, Kafka, or logs may stop accepting writes."
+          dashboard: "dashboards/tripagent/platform?panel=disk"
+          runbook: "runbooks/tripagent/disk-capacity"
+          correlation: "Correlate filesystem pressure with service logs, storage spans, and failed taskId or traceId entries."

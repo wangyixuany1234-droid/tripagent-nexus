@@ -1,0 +1,1170 @@
+openapi: 3.1.0
+info:
+  title: TripAgent Nexus AI Internal API
+  version: 0.5.0
+  summary: Private OCR, multimodal parsing, dual-layer retrieval, and GraphRAG API
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: http://ai-retrieval-service:8000
+security:
+  - serviceBearer: []
+paths:
+  /internal/v1/health:
+    get:
+      operationId: getInternalHealth
+      summary: Get sanitized internal dependency health
+      responses:
+        "200":
+          description: Internal service health
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+  /internal/v1/runtime-metrics:
+    get:
+      operationId: getRuntimeMetrics
+      summary: Get sanitized process and event loop runtime metrics
+      responses:
+        "200":
+          description: Current process and event loop metrics
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuntimeMetricsResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /internal/v1/knowledge/ingest:
+    post:
+      operationId: ingestPublicKnowledge
+      summary: Idempotently index public travel knowledge and graph projections
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+        - $ref: "#/components/parameters/TraceparentHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/KnowledgeIngestRequest"
+      responses:
+        "200":
+          description: Knowledge chunks and graph projections were upserted
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+  /internal/v1/memory/ingest:
+    post:
+      operationId: ingestUserMemory
+      summary: Idempotently index memory for one trusted tenant and user scope
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+        - $ref: "#/components/parameters/TenantIdHeader"
+        - $ref: "#/components/parameters/UserIdHeader"
+        - $ref: "#/components/parameters/TraceparentHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MemoryIngestRequest"
+      responses:
+        "200":
+          description: User-owned memory chunks were upserted
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IngestResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "409":
+          $ref: "#/components/responses/IdempotencyConflict"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+  /internal/v1/memory/{preferenceId}:
+    delete:
+      operationId: deleteUserMemory
+      summary: Delete one user-owned preference from the memory index
+      parameters:
+        - name: preferenceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+        - $ref: "#/components/parameters/TenantIdHeader"
+        - $ref: "#/components/parameters/UserIdHeader"
+        - $ref: "#/components/parameters/TraceparentHeader"
+      responses:
+        "204":
+          description: Matching memory entries were removed
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+  /internal/v1/retrieval/search:
+    post:
+      operationId: searchTravelKnowledge
+      summary: Run rewrite, routing, hybrid recall, graph expansion, rerank, and compression
+      parameters:
+        - $ref: "#/components/parameters/TenantIdHeaderOptional"
+        - $ref: "#/components/parameters/UserIdHeaderOptional"
+        - $ref: "#/components/parameters/TraceparentHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RetrievalSearchRequest"
+      responses:
+        "200":
+          description: Evidence-backed retrieval result
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RetrievalSearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+  /internal/v1/graph/search:
+    post:
+      operationId: searchTravelGraph
+      summary: Run bounded local, regional, or transit graph retrieval
+      parameters:
+        - $ref: "#/components/parameters/TraceparentHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GraphSearchRequest"
+      responses:
+        "200":
+          description: Evidence-backed graph traversal result
+          headers:
+            X-Trace-Id:
+              $ref: "#/components/headers/TraceId"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GraphSearchResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/Unprocessable"
+        "503":
+          $ref: "#/components/responses/DependencyUnavailable"
+  /internal/v1/documents/parse:
+    post:
+      operationId: parseDocumentInternal
+      summary: Run OCR followed by configured visual semantic extraction
+      parameters:
+        - name: traceparent
+          in: header
+          required: false
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [documentId, taskId, mediaType, sha256, file]
+              properties:
+                documentId:
+                  type: string
+                  format: uuid
+                taskId:
+                  type: string
+                  format: uuid
+                mediaType:
+                  type: string
+                  enum: [image/png, image/jpeg, image/webp, application/pdf]
+                sha256:
+                  type: string
+                  pattern: "^[0-9a-f]{64}$"
+                locale:
+                  type: string
+                  maxLength: 35
+                  default: zh-CN
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: Schema-validated extraction result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingExtractionResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Invalid service identity
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "413":
+          description: File exceeds configured limit
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "415":
+          description: Actual MIME type is unsupported or mismatches the claim
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+        "422":
+          description: File structure, OCR, or model output is invalid
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetails"
+components:
+  securitySchemes:
+    serviceBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-service-token
+  parameters:
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+        pattern: "^[A-Za-z0-9._:-]+$"
+    TenantIdHeader:
+      name: X-Tenant-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    TenantIdHeaderOptional:
+      name: X-Tenant-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+    UserIdHeader:
+      name: X-User-Id
+      in: header
+      required: true
+      schema:
+        type: string
+        format: uuid
+    UserIdHeaderOptional:
+      name: X-User-Id
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+    TraceparentHeader:
+      name: traceparent
+      in: header
+      required: false
+      schema:
+        type: string
+        maxLength: 128
+  headers:
+    TraceId:
+      description: OpenTelemetry trace identifier for this request
+      schema:
+        type: string
+        pattern: "^[0-9a-f]{32}$"
+  responses:
+    BadRequest:
+      description: The request body or framing could not be parsed
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/TraceId"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    Unauthorized:
+      description: Invalid service identity
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/TraceId"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    IdempotencyConflict:
+      description: The idempotency key was reused with a different payload
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/TraceId"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    Unprocessable:
+      description: Request or retrieval constraints are invalid
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/TraceId"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+    DependencyUnavailable:
+      description: A required model, vector, or graph dependency is unavailable
+      headers:
+        X-Trace-Id:
+          $ref: "#/components/headers/TraceId"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "#/components/schemas/ProblemDetails"
+  schemas:
+    HealthStatus:
+      type: string
+      enum: [UP, DEGRADED]
+    DependencyStatus:
+      type: string
+      enum: [UP, DOWN, DEGRADED]
+    DependencyHealth:
+      type: object
+      additionalProperties: false
+      required: [name, status]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        status:
+          $ref: "#/components/schemas/DependencyStatus"
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, service, version, time, dependencies]
+      properties:
+        status:
+          $ref: "#/components/schemas/HealthStatus"
+        service:
+          type: string
+          maxLength: 100
+        version:
+          type: string
+          maxLength: 100
+        time:
+          type: string
+          format: date-time
+        dependencies:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/DependencyHealth"
+    RuntimeMetricsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          timestamp,
+          processRssBytes,
+          threadCount,
+          eventLoopLagMs,
+          eventLoopLagP95Ms,
+          eventLoopLagMaxMs,
+          eventLoopSamples,
+        ]
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        processRssBytes:
+          type: integer
+          minimum: 0
+        threadCount:
+          type: integer
+          minimum: 0
+        eventLoopLagMs:
+          type: number
+          minimum: 0
+        eventLoopLagP95Ms:
+          type: number
+          minimum: 0
+        eventLoopLagMaxMs:
+          type: number
+          minimum: 0
+        eventLoopSamples:
+          type: integer
+          minimum: 0
+    ProviderMode:
+      type: string
+      enum: [DEEPSEEK, MOCK]
+    KnowledgeSourceType:
+      type: string
+      enum:
+        - CITY_GUIDE
+        - ATTRACTION
+        - REGION_GUIDE
+        - TRANSIT_RULE
+        - OPENING_HOURS
+        - NOTICE
+        - DINING_AREA
+        - LODGING_AREA
+    MemorySourceType:
+      type: string
+      enum:
+        - TRIP_HISTORY
+        - SAVED_PLACE
+        - BUDGET_PREFERENCE
+        - PACE_PREFERENCE
+        - DIETARY_RESTRICTION
+        - USER_FEEDBACK
+    RetrievalLayer:
+      type: string
+      enum: [PUBLIC_KNOWLEDGE, USER_MEMORY, GRAPH, REALTIME_TOOL]
+    RetrievalIntent:
+      type: string
+      enum:
+        - LOCAL_NEARBY
+        - REGION_PLANNING
+        - PERSONALIZED_RECOMMENDATION
+        - TRANSIT_CONNECTION
+        - REALTIME_FACT
+        - GENERAL_KNOWLEDGE
+    RetrievalStrategy:
+      type: string
+      enum:
+        - VECTOR
+        - KEYWORD
+        - HYBRID
+        - USER_MEMORY
+        - LOCAL_GRAPH
+        - REGION_GRAPH
+        - TRANSIT_GRAPH
+        - CROSS_ENCODER
+        - REALTIME_TOOL
+    GraphScope:
+      type: string
+      enum: [AUTO, LOCAL, REGION, TRANSIT]
+    GraphNodeType:
+      type: string
+      enum:
+        - CITY
+        - REGION
+        - ATTRACTION
+        - RESTAURANT
+        - HOTEL
+        - STATION
+        - AIRPORT
+        - TRANSIT_LINE
+    GraphRelationshipType:
+      type: string
+      enum:
+        - LOCATED_IN
+        - NEAR
+        - CONNECTED_TO
+        - OPEN_DURING
+        - SUITABLE_FOR
+        - CONFLICTS_WITH
+        - REQUIRES_RESERVATION
+    Metadata:
+      type: object
+      maxProperties: 50
+      additionalProperties: true
+    KnowledgeChunkInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          chunkId,
+          sourceId,
+          sourceType,
+          title,
+          city,
+          language,
+          content,
+          updatedAt,
+          metadata,
+        ]
+      properties:
+        chunkId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 300
+        sourceType:
+          $ref: "#/components/schemas/KnowledgeSourceType"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        region:
+          type: [string, "null"]
+          maxLength: 100
+        validFrom:
+          type: [string, "null"]
+          format: date
+        validTo:
+          type: [string, "null"]
+          format: date
+        language:
+          type: string
+          minLength: 2
+          maxLength: 35
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        updatedAt:
+          type: string
+          format: date-time
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+    MemoryChunkInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          chunkId,
+          sourceId,
+          sourceType,
+          title,
+          language,
+          content,
+          updatedAt,
+          metadata,
+        ]
+      properties:
+        chunkId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 300
+        sourceType:
+          $ref: "#/components/schemas/MemorySourceType"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        city:
+          type: [string, "null"]
+          maxLength: 100
+        region:
+          type: [string, "null"]
+          maxLength: 100
+        validFrom:
+          type: [string, "null"]
+          format: date
+        validTo:
+          type: [string, "null"]
+          format: date
+        language:
+          type: string
+          minLength: 2
+          maxLength: 35
+        content:
+          type: string
+          minLength: 1
+          maxLength: 12000
+        updatedAt:
+          type: string
+          format: date-time
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+    GraphNodeInput:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          nodeId,
+          type,
+          name,
+          sourceId,
+          sourceType,
+          title,
+          excerpt,
+          city,
+          language,
+          updatedAt,
+        ]
+      properties:
+        nodeId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          $ref: "#/components/schemas/GraphNodeType"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 300
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 300
+        sourceType:
+          $ref: "#/components/schemas/KnowledgeSourceType"
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        excerpt:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        city:
+          type: string
+          minLength: 1
+          maxLength: 100
+        region:
+          type: [string, "null"]
+          maxLength: 100
+        validFrom:
+          type: [string, "null"]
+          format: date
+        validTo:
+          type: [string, "null"]
+          format: date
+        language:
+          type: string
+          minLength: 2
+          maxLength: 35
+        updatedAt:
+          type: string
+          format: date-time
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+    GraphRelationshipInput:
+      type: object
+      additionalProperties: false
+      required: [fromNodeId, toNodeId, type]
+      properties:
+        fromNodeId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        toNodeId:
+          type: string
+          minLength: 1
+          maxLength: 200
+        type:
+          $ref: "#/components/schemas/GraphRelationshipType"
+        distanceMeters:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 10000000
+        durationMinutes:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 100000
+        metadata:
+          $ref: "#/components/schemas/Metadata"
+    GraphProjectionInput:
+      type: object
+      additionalProperties: false
+      required: [nodes, relationships]
+      properties:
+        nodes:
+          type: array
+          maxItems: 500
+          items:
+            $ref: "#/components/schemas/GraphNodeInput"
+        relationships:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: "#/components/schemas/GraphRelationshipInput"
+    KnowledgeIngestRequest:
+      type: object
+      additionalProperties: false
+      required: [chunks]
+      properties:
+        chunks:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/KnowledgeChunkInput"
+        graph:
+          $ref: "#/components/schemas/GraphProjectionInput"
+    MemoryIngestRequest:
+      type: object
+      additionalProperties: false
+      required: [chunks]
+      properties:
+        chunks:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/MemoryChunkInput"
+    IngestResponse:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          ingestionId,
+          layer,
+          indexedCount,
+          graphNodesUpserted,
+          graphRelationshipsUpserted,
+          embeddingDimensions,
+          providerMode,
+        ]
+      properties:
+        ingestionId:
+          type: string
+          format: uuid
+        layer:
+          $ref: "#/components/schemas/RetrievalLayer"
+        indexedCount:
+          type: integer
+          minimum: 0
+        graphNodesUpserted:
+          type: integer
+          minimum: 0
+        graphRelationshipsUpserted:
+          type: integer
+          minimum: 0
+        embeddingDimensions:
+          type: integer
+          minimum: 1
+        providerMode:
+          $ref: "#/components/schemas/ProviderMode"
+    RetrievalSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        city:
+          type: [string, "null"]
+          maxLength: 100
+        region:
+          type: [string, "null"]
+          maxLength: 100
+        travelDate:
+          type: [string, "null"]
+          format: date
+        language:
+          type: string
+          minLength: 2
+          maxLength: 35
+          default: zh-CN
+        includePublicKnowledge:
+          type: boolean
+          default: true
+        includeUserMemory:
+          type: boolean
+          default: false
+        includeGraph:
+          type: boolean
+          default: true
+        maxResults:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 8
+    Evidence:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          sourceId,
+          sourceType,
+          title,
+          excerpt,
+          relevanceScore,
+          updatedAt,
+          retrievalStrategies,
+          fromRealtimeTool,
+          layer,
+        ]
+      properties:
+        chunkId:
+          type: [string, "null"]
+          maxLength: 200
+        sourceId:
+          type: string
+          minLength: 1
+          maxLength: 300
+        sourceType:
+          type: string
+          minLength: 1
+          maxLength: 100
+        title:
+          type: string
+          minLength: 1
+          maxLength: 300
+        excerpt:
+          type: string
+          minLength: 1
+          maxLength: 1000
+        relevanceScore:
+          type: string
+          pattern: "^(?:0(?:\\.\\d{1,4})?|1(?:\\.0{1,4})?)$"
+        updatedAt:
+          type: string
+          format: date-time
+        retrievalStrategies:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/RetrievalStrategy"
+        fromRealtimeTool:
+          type: boolean
+        layer:
+          $ref: "#/components/schemas/RetrievalLayer"
+        city:
+          type: [string, "null"]
+          maxLength: 100
+        region:
+          type: [string, "null"]
+          maxLength: 100
+    RetrievalSearchResponse:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          rewrittenQuery,
+          intent,
+          routes,
+          evidence,
+          evidenceInsufficient,
+          realtimeToolRequired,
+          providerMode,
+          warnings,
+        ]
+      properties:
+        rewrittenQuery:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        intent:
+          $ref: "#/components/schemas/RetrievalIntent"
+        routes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: "#/components/schemas/RetrievalLayer"
+        evidence:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/Evidence"
+        evidenceInsufficient:
+          type: boolean
+        realtimeToolRequired:
+          type: boolean
+        providerMode:
+          $ref: "#/components/schemas/ProviderMode"
+        warnings:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 300
+    GraphSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        scope:
+          $ref: "#/components/schemas/GraphScope"
+        anchorEntity:
+          type: [string, "null"]
+          maxLength: 300
+        city:
+          type: [string, "null"]
+          maxLength: 100
+        region:
+          type: [string, "null"]
+          maxLength: 100
+        travelDate:
+          type: [string, "null"]
+          format: date
+        language:
+          type: string
+          minLength: 2
+          maxLength: 35
+          default: zh-CN
+        maxResults:
+          type: integer
+          minimum: 1
+          maximum: 20
+          default: 8
+    GraphSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [scope, evidence, evidenceInsufficient, providerMode]
+      properties:
+        scope:
+          $ref: "#/components/schemas/GraphScope"
+        evidence:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/Evidence"
+        evidenceInsufficient:
+          type: boolean
+        providerMode:
+          $ref: "#/components/schemas/ProviderMode"
+    BookingType:
+      type: string
+      enum: [FLIGHT, HOTEL, TICKET, TRAIN, OTHER]
+    EvidenceRegion:
+      type: object
+      additionalProperties: false
+      required: [page, x, y, width, height]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        x:
+          type: string
+          pattern: "^(?:0(?:\\.\\d{1,4})?|1(?:\\.0{1,4})?)$"
+        y:
+          type: string
+          pattern: "^(?:0(?:\\.\\d{1,4})?|1(?:\\.0{1,4})?)$"
+        width:
+          type: string
+          pattern: "^(?:0\\.(?=\\d{0,3}[1-9])\\d{1,4}|1(?:\\.0{1,4})?)$"
+        height:
+          type: string
+          pattern: "^(?:0\\.(?=\\d{0,3}[1-9])\\d{1,4}|1(?:\\.0{1,4})?)$"
+    FieldEvidence:
+      type: object
+      additionalProperties: false
+      required: [field, confidence]
+      anyOf:
+        - required: [textEvidence]
+        - required: [region]
+      properties:
+        field:
+          type: string
+          enum:
+            - type
+            - provider
+            - origin
+            - destination
+            - hotelName
+            - hotelAddress
+            - transportNumber
+            - startTime
+            - endTime
+            - travelerCount
+            - amount
+            - currency
+            - confirmationNumber
+        confidence:
+          type: string
+          pattern: "^(?:0(?:\\.\\d{1,4})?|1(?:\\.0{1,4})?)$"
+        textEvidence:
+          type: string
+          maxLength: 1000
+        region:
+          $ref: "#/components/schemas/EvidenceRegion"
+    ExtractedBooking:
+      type: object
+      additionalProperties: false
+      required: [type, confidence, missingFields, fieldEvidence]
+      properties:
+        type:
+          $ref: "#/components/schemas/BookingType"
+        provider:
+          type: [string, "null"]
+          maxLength: 200
+        origin:
+          type: [string, "null"]
+          maxLength: 300
+        destination:
+          type: [string, "null"]
+          maxLength: 300
+        hotelName:
+          type: [string, "null"]
+          maxLength: 300
+        hotelAddress:
+          type: [string, "null"]
+          maxLength: 500
+        transportNumber:
+          type: [string, "null"]
+          maxLength: 100
+        startTime:
+          type: [string, "null"]
+          format: date-time
+        endTime:
+          type: [string, "null"]
+          format: date-time
+        travelerCount:
+          type: [integer, "null"]
+          minimum: 1
+          maximum: 100
+        amount:
+          type: [string, "null"]
+          pattern: "^\\d{1,15}(?:\\.\\d{1,4})?$"
+        currency:
+          type: [string, "null"]
+          pattern: "^[A-Z]{3}$"
+        confirmationNumber:
+          type: [string, "null"]
+          maxLength: 200
+        confidence:
+          type: string
+          pattern: "^(?:0(?:\\.\\d{1,4})?|1(?:\\.0{1,4})?)$"
+        missingFields:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items:
+            type: string
+        fieldEvidence:
+          type: array
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/FieldEvidence"
+    BookingExtractionResult:
+      type: object
+      additionalProperties: false
+      required:
+        [bookings, warnings, confidence, parserMode, parserVersion, ocrEngine]
+      properties:
+        bookings:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/ExtractedBooking"
+        warnings:
+          type: array
+          maxItems: 100
+          items:
+            type: string
+            maxLength: 500
+        confidence:
+          type: string
+          pattern: "^(?:0(?:\\.\\d{1,4})?|1(?:\\.0{1,4})?)$"
+        parserMode:
+          type: string
+          enum: [DEEPSEEK, MOCK]
+        parserVersion:
+          type: string
+          maxLength: 100
+        ocrEngine:
+          type: string
+          maxLength: 100
+    ProblemDetails:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          type,
+          title,
+          status,
+          detail,
+          instance,
+          code,
+          message,
+          traceId,
+          timestamp,
+          retryable,
+          errors,
+        ]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+          maxLength: 1000
+        traceId:
+          type: string
+          pattern: "^[0-9a-f]{32}$"
+        timestamp:
+          type: string
+          format: date-time
+        retryable:
+          type: boolean
+        errors:
+          type: array
+          items:
+            type: object

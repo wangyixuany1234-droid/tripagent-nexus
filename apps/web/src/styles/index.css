@@ -1,0 +1,170 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  color-scheme: light;
+  --background: #f7f8f6;
+  --surface: #ffffff;
+  --surface-subtle: #eef2f3;
+  --foreground: #17212b;
+  --muted: #5b6975;
+  --border: #d9e0e3;
+  --navy: #12324a;
+  --navy-strong: #0a2539;
+  --sky: #176b92;
+  --sky-soft: #dceef7;
+  --coral: #b94136;
+  --coral-soft: #fbe5e1;
+  --success: #17715a;
+  --success-soft: #dcefe8;
+  --warning: #79500f;
+  --warning-soft: #faebcc;
+  --danger: #b43739;
+  --danger-soft: #f8dfdf;
+  --focus: #2d86b5;
+  --shadow: 0 16px 42px rgb(18 50 74 / 0.09);
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #111719;
+  --surface: #192125;
+  --surface-subtle: #202b30;
+  --foreground: #edf3f4;
+  --muted: #a7b5bb;
+  --border: #344248;
+  --navy: #a7d9ef;
+  --navy-strong: #d7f1fc;
+  --sky: #63b6de;
+  --sky-soft: #173a49;
+  --coral: #ff8d7d;
+  --coral-soft: #4b2927;
+  --success: #71d1b4;
+  --success-soft: #183c34;
+  --warning: #f4c56d;
+  --warning-soft: #44361f;
+  --danger: #ff9999;
+  --danger-soft: #4c282a;
+  --focus: #78c5e8;
+  --shadow: 0 18px 48px rgb(0 0 0 / 0.3);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-subtle: var(--surface-subtle);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-navy: var(--navy);
+  --color-navy-strong: var(--navy-strong);
+  --color-sky: var(--sky);
+  --color-sky-soft: var(--sky-soft);
+  --color-coral: var(--coral);
+  --color-coral-soft: var(--coral-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --font-sans: "Inter", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  min-width: 320px;
+  background: var(--background);
+  scroll-behavior: smooth;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  overflow-x: hidden;
+  background:
+    linear-gradient(rgb(36 127 174 / 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(36 127 174 / 0.035) 1px, transparent 1px),
+    var(--background);
+  background-size: 32px 32px;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  letter-spacing: 0;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+a,
+input,
+textarea,
+select {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--sky-soft);
+  color: var(--navy-strong);
+}
+
+.map-grid {
+  background-color: #dce7e9;
+  background-image:
+    linear-gradient(rgb(18 50 74 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(18 50 74 / 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .map-grid {
+  background-color: #1c292d;
+  background-image:
+    linear-gradient(rgb(167 217 239 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(167 217 239 / 0.07) 1px, transparent 1px);
+}
+
+.maplibregl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.maplibregl-ctrl-group button {
+  background-color: var(--surface);
+}
+
+.maplibregl-ctrl-group button span {
+  filter: none;
+}
+
+.route-flow {
+  animation: route-flow 1.8s linear infinite;
+}
+
+@keyframes route-flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/accommodation-agent.schema.json",
+  "title": "AccommodationAgent Contract",
+  "x-agent-card": {
+    "name": "AccommodationAgent",
+    "description": "Selects stay areas and evaluates hotel constraints after arrival.",
+    "version": "1.0.0",
+    "skills": [
+      "place_search",
+      "route_calculate",
+      "opening_hours",
+      "exchange_rate"
+    ],
+    "timeoutMs": 35000,
+    "retry": { "maxAttempts": 3, "initialBackoffMs": 300 },
+    "errorCodes": [
+      "ACCOMMODATION_INPUT_INVALID",
+      "ACCOMMODATION_OUTPUT_INVALID",
+      "ACCOMMODATION_INVENTORY_UNAVAILABLE",
+      "ACCOMMODATION_TIMEOUT"
+    ],
+    "allowDegraded": true,
+    "promptTemplateVersion": "accommodation-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "city", "checkIn", "checkOut"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "city": { "type": "string", "minLength": 1 },
+        "checkIn": { "type": "string", "format": "date-time" },
+        "checkOut": { "type": "string", "format": "date-time" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["arrivalAnchor", "options"],
+      "properties": {
+        "arrivalAnchor": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Arrival time received from TransportAgent."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["optionId", "name", "area", "cost"],
+            "properties": {
+              "optionId": { "type": "string" },
+              "name": { "type": "string" },
+              "area": { "type": "string" },
+              "cost": { "$ref": "common.schema.json#/$defs/money" }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "AccommodationAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

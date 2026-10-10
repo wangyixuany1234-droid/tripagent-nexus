@@ -1,0 +1,96 @@
+{
+  "stage": 6,
+  "name": "跨存储与任务状态一致性",
+  "scenarios": [
+    {
+      "id": "S6-01",
+      "scenario": "Kafka 重复投递 plan.requested",
+      "mechanism": "event_inbox consumer_name + event_id 唯一约束",
+      "expected": "工作流最多执行一次，重复投递不创建业务资源"
+    },
+    {
+      "id": "S6-02",
+      "scenario": "业务成功但提交 offset 前崩溃",
+      "mechanism": "已完成 Inbox 记录和任务终态检查",
+      "expected": "重投递被识别，不重复生成计划"
+    },
+    {
+      "id": "S6-03",
+      "scenario": "数据库写入成功但 completed 事件发送失败",
+      "mechanism": "Transactional Outbox 重试",
+      "expected": "Outbox 保持 PENDING 并以同一 eventId 重试"
+    },
+    {
+      "id": "S6-04",
+      "scenario": "completed 事件已发送但发布状态更新失败",
+      "mechanism": "稳定 eventId 重投递 + Inbox 去重",
+      "expected": "允许消息重发但业务处理最多一次"
+    },
+    {
+      "id": "S6-05",
+      "scenario": "同一个 Agent Result 重复到达",
+      "mechanism": "source_event_id 唯一约束与 result_version 门禁",
+      "expected": "重复结果为幂等 no-op"
+    },
+    {
+      "id": "S6-06",
+      "scenario": "Agent Result 乱序到达",
+      "mechanism": "单调 result_version",
+      "expected": "只保留最高版本"
+    },
+    {
+      "id": "S6-07",
+      "scenario": "旧 Agent Result 晚于新执行到达",
+      "mechanism": "execution_sequence 决定当前执行投影",
+      "expected": "旧执行不会覆盖新执行"
+    },
+    {
+      "id": "S6-08",
+      "scenario": "Redis 状态丢失但 PostgreSQL 数据存在",
+      "mechanism": "PostgreSQL 为权威源，读取时重建 Redis 投影",
+      "expected": "读取结果与数据库一致"
+    },
+    {
+      "id": "S6-09",
+      "scenario": "PostgreSQL 临时断开",
+      "mechanism": "事务回滚、连接恢复与一致性脚本",
+      "expected": "不产生半提交状态"
+    },
+    {
+      "id": "S6-10",
+      "scenario": "Kafka Broker 临时断开",
+      "mechanism": "Outbox 指数退避与稳定 eventId",
+      "expected": "恢复后发布，业务资源不重复"
+    },
+    {
+      "id": "S6-11",
+      "scenario": "Neo4j 成功但 LanceDB 超时",
+      "mechanism": "按检索路由隔离故障",
+      "expected": "返回真实图证据并报告 LanceDB 降级"
+    },
+    {
+      "id": "S6-12",
+      "scenario": "任务完成前取消",
+      "mechanism": "任务与资源同事务取消",
+      "expected": "任务和生成中计划均为 CANCELLED"
+    },
+    {
+      "id": "S6-13",
+      "scenario": "取消与完成同时发生",
+      "mechanism": "计划和任务乐观锁，首个持久化终态获胜",
+      "expected": "只产生一个终态且任务和计划一致"
+    },
+    {
+      "id": "S6-14",
+      "scenario": "服务重启时存在 RUNNING 任务",
+      "mechanism": "启动恢复、结果资源核对和恢复次数限制",
+      "expected": "已完成计划对应任务被收敛，其余不安全步骤明确失败"
+    },
+    {
+      "id": "S6-15",
+      "scenario": "Dead Letter 重新投递",
+      "mechanism": "新 taskId、新 eventId、原始 causationId 和审计字段",
+      "expected": "原失败任务不可变，重放可追溯且只允许一次"
+    }
+  ]
+}

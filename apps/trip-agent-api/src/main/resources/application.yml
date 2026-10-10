@@ -1,0 +1,280 @@
+spring:
+  application:
+    name: trip-agent-api
+  ai:
+    chat:
+      client:
+        observations:
+          log-prompt: false
+          log-completion: false
+      observations:
+        log-prompt: false
+        log-completion: false
+    model:
+      chat: ${SPRING_AI_MODEL_CHAT:openai}
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    openai:
+      base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+      api-key: ${DEEPSEEK_API_KEY:}
+      chat:
+        completions-path: /chat/completions
+        options:
+          model: ${DEEPSEEK_MODEL:deepseek-chat}
+          stream-usage: true
+    retry:
+      max-attempts: 1
+  jackson:
+    time-zone: UTC
+    mapper:
+      allow-coercion-of-scalars: false
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      adjust-dates-to-context-time-zone: false
+      fail-on-unknown-properties: true
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/tripagent}
+    username: ${SPRING_DATASOURCE_USERNAME:tripagent}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      connection-timeout: ${SPRING_DATASOURCE_HIKARI_CONNECTIONTIMEOUT:3000}
+      validation-timeout: 2000
+      maximum-pool-size: ${SPRING_DATASOURCE_HIKARI_MAXIMUMPOOLSIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD}
+      timeout: 2s
+      connect-timeout: 2s
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    template:
+      observation-enabled: true
+    admin:
+      fail-fast: true
+      auto-create: false
+    properties:
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      retries: 10
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: trip-agent-api
+      properties:
+        session.timeout.ms: ${KAFKA_CONSUMER_SESSION_TIMEOUT_MS:10000}
+        heartbeat.interval.ms: ${KAFKA_CONSUMER_HEARTBEAT_INTERVAL_MS:3000}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record
+  servlet:
+    multipart:
+      max-file-size: ${UPLOAD_MAX_SIZE_BYTES:10485760}B
+      max-request-size: ${UPLOAD_MAX_SIZE_BYTES:10485760}B
+      resolve-lazily: true
+
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+  forward-headers-strategy: framework
+  error:
+    include-message: never
+    include-stacktrace: never
+
+app:
+  idempotency:
+    wait-timeout: ${IDEMPOTENCY_WAIT_TIMEOUT:30s}
+    initial-retry-interval: ${IDEMPOTENCY_INITIAL_RETRY_INTERVAL:10ms}
+    maximum-retry-interval: ${IDEMPOTENCY_MAXIMUM_RETRY_INTERVAL:250ms}
+  guardrails:
+    prompt-injection-enabled: ${PROMPT_INJECTION_ENABLED:true}
+    allowed-external-hosts: ${ALLOWED_EXTERNAL_HOSTS:localhost,127.0.0.1,ai-retrieval-service,trip-agent-api,api.deepseek.com,tile.openstreetmap.org}
+  maps:
+    enabled: ${MAP_TILES_ENABLED:true}
+    tile-base-url: ${MAP_TILE_BASE_URL:https://tile.openstreetmap.org}
+    user-agent: ${MAP_TILE_USER_AGENT:TripAgent-Nexus/0.1}
+    connect-timeout: ${MAP_TILE_CONNECT_TIMEOUT:3s}
+    read-timeout: ${MAP_TILE_READ_TIMEOUT:8s}
+    max-zoom: ${MAP_TILE_MAX_ZOOM:19}
+    max-tile-bytes: ${MAP_TILE_MAX_BYTES:1048576}
+  developer-tools:
+    enabled: ${DEVELOPER_TOOLS_ENABLED:false}
+    jaeger-base-url: ${JAEGER_BASE_URL:http://localhost:16686}
+    timeout: ${DEVELOPER_TRACE_TIMEOUT:3s}
+  agents:
+    enabled: ${AGENT_ORCHESTRATION_ENABLED:true}
+  async-governance:
+    enabled: ${ASYNC_GOVERNANCE_ENABLED:true}
+    redis-enabled: ${ASYNC_REDIS_ENABLED:true}
+    plan-requested-topic: ${PLAN_REQUESTED_TOPIC:trip.plan.requested}
+    document-parse-requested-topic: ${DOCUMENT_PARSE_REQUESTED_TOPIC:document.parse.requested}
+    document-parse-completed-topic: ${DOCUMENT_PARSE_COMPLETED_TOPIC:document.parse.completed}
+    retrieval-requested-topic: ${RETRIEVAL_REQUESTED_TOPIC:retrieval.requested}
+    agent-task-requested-topic: ${AGENT_TASK_REQUESTED_TOPIC:agent.task.requested}
+    agent-task-completed-topic: ${AGENT_TASK_COMPLETED_TOPIC:agent.task.completed}
+    plan-review-requested-topic: ${PLAN_REVIEW_REQUESTED_TOPIC:plan.review.requested}
+    plan-completed-topic: ${PLAN_COMPLETED_TOPIC:plan.completed}
+    task-failed-topic: ${TASK_FAILED_TOPIC:task.failed}
+    dead-letter-topic: ${DEAD_LETTER_TOPIC:dead-letter}
+    max-event-bytes: ${ASYNC_MAX_EVENT_BYTES:262144}
+    max-attempts: ${ASYNC_MAX_ATTEMPTS:5}
+    initial-backoff: ${ASYNC_INITIAL_BACKOFF:1s}
+    maximum-backoff: ${ASYNC_MAXIMUM_BACKOFF:30s}
+    publish-timeout: ${ASYNC_PUBLISH_TIMEOUT:5s}
+    outbox-poll-interval: ${ASYNC_OUTBOX_POLL_INTERVAL:500ms}
+    stale-task-threshold: ${ASYNC_STALE_TASK_THRESHOLD:5m}
+    recovery-poll-interval: ${ASYNC_RECOVERY_POLL_INTERVAL:30s}
+    max-recovery-attempts: ${ASYNC_MAX_RECOVERY_ATTEMPTS:1}
+    external-call-timeout: ${ASYNC_EXTERNAL_CALL_TIMEOUT:90s}
+    external-max-concurrency: ${ASYNC_EXTERNAL_MAX_CONCURRENCY:8}
+    external-circuit-window: ${ASYNC_EXTERNAL_CIRCUIT_WINDOW:10}
+    external-circuit-minimum-calls: ${ASYNC_EXTERNAL_CIRCUIT_MINIMUM_CALLS:5}
+    external-circuit-failure-rate: ${ASYNC_EXTERNAL_CIRCUIT_FAILURE_RATE:50}
+    external-circuit-open-duration: ${ASYNC_EXTERNAL_CIRCUIT_OPEN_DURATION:10s}
+    external-circuit-half-open-calls: ${ASYNC_EXTERNAL_CIRCUIT_HALF_OPEN_CALLS:1}
+    operations-replay-limit-per-minute: ${ASYNC_OPERATIONS_REPLAY_LIMIT_PER_MINUTE:10}
+    redis-task-ttl: ${ASYNC_REDIS_TASK_TTL:24h}
+    redis-sse-ttl: ${ASYNC_REDIS_SSE_TTL:24h}
+    redis-session-ttl: ${ASYNC_REDIS_SESSION_TTL:8h}
+    redis-hot-place-ttl: ${ASYNC_REDIS_HOT_PLACE_TTL:30m}
+    redis-lock-ttl: ${ASYNC_REDIS_LOCK_TTL:2m}
+    operations-token: ${ASYNC_OPERATIONS_TOKEN:}
+  planning:
+    enabled: ${PLANNING_ENABLED:true}
+    provider-mode: ${PLANNING_PROVIDER_MODE:LIVE}
+    tenant-id: ${PLANNING_TENANT_ID:00000000-0000-0000-0000-000000000001}
+    token-budget: ${PLANNING_TOKEN_BUDGET:12000}
+    candidate-target: ${PLANNING_CANDIDATE_TARGET:2}
+    max-auto-replans: ${PLANNING_MAX_AUTO_REPLANS:1}
+    default-commute-minutes: ${PLANNING_DEFAULT_COMMUTE_MINUTES:45}
+    checkpoint-retention: ${PLANNING_CHECKPOINT_RETENTION:24h}
+    max-concurrent-workflows: ${PLANNING_MAX_CONCURRENT_WORKFLOWS:4}
+    checkpoint-cleanup-interval: ${PLANNING_CHECKPOINT_CLEANUP_INTERVAL:1h}
+  security:
+    enabled: ${USER_AUTH_ENABLED:true}
+    allowed-origins: ${FRONTEND_ALLOWED_ORIGINS:http://localhost:5173}
+    issuer-uri: ${AUTH_ISSUER_URI:https://auth.invalid.tripagent.local}
+    audience: ${AUTH_AUDIENCE:tripagent-api}
+    jwk-set-uri: ${AUTH_JWK_SET_URI:http://127.0.0.1:65535/.well-known/jwks.json}
+    plan-submission-limit-per-minute: ${PLAN_SUBMISSION_LIMIT_PER_MINUTE:10}
+  upload:
+    max-size: ${UPLOAD_MAX_SIZE_BYTES:10485760}B
+    storage-root: ${UPLOAD_STORAGE_ROOT:./data/uploads}
+    max-pixels: ${UPLOAD_MAX_PIXELS:40000000}
+    max-pdf-pages: ${UPLOAD_MAX_PDF_PAGES:20}
+    allowed-mime-types: ${UPLOAD_ALLOWED_MIME_TYPES:image/jpeg,image/png,image/webp,application/pdf}
+    allowed-extensions: ${UPLOAD_ALLOWED_EXTENSIONS:.jpg,.jpeg,.png,.webp,.pdf}
+  document-processing:
+    messaging-enabled: ${DOCUMENT_PROCESSING_MESSAGING_ENABLED:true}
+    requested-topic: ${DOCUMENT_PARSE_REQUESTED_TOPIC:document.parse.requested}
+    completed-topic: ${DOCUMENT_PARSE_COMPLETED_TOPIC:document.parse.completed}
+    locale: ${DOCUMENT_PARSE_LOCALE:zh-CN}
+    critical-confidence-threshold: ${DOCUMENT_CRITICAL_CONFIDENCE_THRESHOLD:0.7500}
+    outbox-poll-interval: ${DOCUMENT_OUTBOX_POLL_INTERVAL:500ms}
+  ai-retrieval:
+    base-url: ${AI_RETRIEVAL_BASE_URL:http://localhost:8000}
+    service-token: ${AI_SERVICE_TOKEN}
+    document-timeout: ${AI_DOCUMENT_TIMEOUT:90s}
+  model:
+    provider: ${MODEL_GATEWAY_PROVIDER:deepseek}
+    model: ${DEEPSEEK_MODEL:deepseek-chat}
+    fallback-provider: ${MODEL_FALLBACK_PROVIDER:none}
+    allow-mock-fallback: ${MODEL_ALLOW_MOCK_FALLBACK:false}
+    timeout: ${MODEL_TIMEOUT:15s}
+    max-attempts: ${MODEL_MAX_ATTEMPTS:3}
+    initial-backoff: ${MODEL_INITIAL_BACKOFF:200ms}
+    backoff-multiplier: ${MODEL_BACKOFF_MULTIPLIER:2.0}
+    max-concurrency: ${MODEL_MAX_CONCURRENCY:8}
+    max-total-calls: ${MODEL_MAX_TOTAL_CALLS:2147483647}
+    max-response-chars: ${MODEL_MAX_RESPONSE_CHARS:262144}
+    concurrency-wait: ${MODEL_CONCURRENCY_WAIT:100ms}
+  mcp:
+    base-url: ${MCP_BASE_URL:http://localhost:${server.port}}
+    endpoint: ${MCP_ENDPOINT:/mcp}
+    service-token: ${MCP_SERVICE_TOKEN:${AI_SERVICE_TOKEN:}}
+    request-timeout: ${MCP_REQUEST_TIMEOUT:10s}
+    max-request-size: ${MCP_MAX_REQUEST_SIZE:1048576}
+    provider-mode: ${MCP_PROVIDER_MODE:LIVE}
+    expected-server-name: ${MCP_EXPECTED_SERVER_NAME:tripagent-tools-mcp}
+    expected-server-version: ${MCP_EXPECTED_SERVER_VERSION:1.0.0}
+
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: ${MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED:true}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+      group:
+        readiness:
+          include: readinessState,db,redis,kafka,aiRetrieval
+        liveness:
+          include: livenessState,ping
+  health:
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: ${OTEL_TRACES_SAMPLER_ARG:1.0}
+    propagation:
+      type: W3C
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318}/v1/traces
+
+info:
+  app:
+    name: ${spring.application.name}
+    phase: 12
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      aiRetrieval:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+  timelimiter:
+    instances:
+      aiRetrieval:
+        timeout-duration: 3s
+
+logging:
+  level:
+    root: INFO
+    com.tripagent.nexus: INFO
+    org.apache.kafka: WARN

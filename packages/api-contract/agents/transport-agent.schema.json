@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/transport-agent.schema.json",
+  "title": "TransportAgent Contract",
+  "x-agent-card": {
+    "name": "TransportAgent",
+    "description": "Produces intercity and local transport candidates with arrival anchors.",
+    "version": "1.0.0",
+    "skills": [
+      "place_search",
+      "weather_query",
+      "route_calculate",
+      "exchange_rate"
+    ],
+    "timeoutMs": 35000,
+    "retry": { "maxAttempts": 3, "initialBackoffMs": 300 },
+    "errorCodes": [
+      "TRANSPORT_INPUT_INVALID",
+      "TRANSPORT_OUTPUT_INVALID",
+      "TRANSPORT_ROUTE_UNAVAILABLE",
+      "TRANSPORT_TIMEOUT"
+    ],
+    "allowDegraded": true,
+    "promptTemplateVersion": "transport-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "origin", "destinations"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "origin": { "type": "string", "minLength": 1 },
+        "destinations": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["options"],
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "optionId",
+              "mode",
+              "origin",
+              "destination",
+              "departureTime",
+              "arrivalTime",
+              "cost"
+            ],
+            "properties": {
+              "optionId": { "type": "string" },
+              "mode": { "type": "string" },
+              "origin": { "type": "string" },
+              "destination": { "type": "string" },
+              "departureTime": { "type": "string", "format": "date-time" },
+              "arrivalTime": { "type": "string", "format": "date-time" },
+              "cost": { "$ref": "common.schema.json#/$defs/money" }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "TransportAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

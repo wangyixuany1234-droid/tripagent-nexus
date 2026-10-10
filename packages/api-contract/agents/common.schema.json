@@ -1,0 +1,261 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/common.schema.json",
+  "title": "TripAgent Agent Common Contract",
+  "$defs": {
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sourceId",
+        "sourceType",
+        "title",
+        "excerpt",
+        "relevanceScore",
+        "fromRealtimeTool"
+      ],
+      "properties": {
+        "sourceId": { "type": "string", "maxLength": 200 },
+        "sourceType": { "type": "string", "maxLength": 100 },
+        "title": { "type": "string", "maxLength": 500 },
+        "excerpt": { "type": "string", "maxLength": 3000 },
+        "relevanceScore": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "fromRealtimeTool": { "type": "boolean" }
+      }
+    },
+    "warning": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+        "message": { "type": "string", "maxLength": 1000 }
+      }
+    },
+    "money": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" }
+      }
+    },
+    "contextEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "systemRules",
+        "userConstraints",
+        "parsedBookings",
+        "retrievedEvidence",
+        "toolResults",
+        "agentResults",
+        "planVersion",
+        "tokenBudget",
+        "privacyLabels"
+      ],
+      "properties": {
+        "systemRules": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 50,
+          "items": { "type": "string", "maxLength": 1000 }
+        },
+        "userConstraints": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "constraintId",
+              "kind",
+              "statement",
+              "protectedFromSummarization"
+            ],
+            "properties": {
+              "constraintId": { "type": "string", "maxLength": 100 },
+              "kind": { "enum": ["HARD", "SOFT"] },
+              "statement": { "type": "string", "maxLength": 1000 },
+              "protectedFromSummarization": { "type": "boolean" }
+            }
+          }
+        },
+        "parsedBookings": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "bookingId",
+              "bookingType",
+              "startTime",
+              "endTime",
+              "confirmed",
+              "summary"
+            ],
+            "properties": {
+              "bookingId": { "type": "string", "format": "uuid" },
+              "bookingType": {
+                "enum": ["FLIGHT", "HOTEL", "TICKET", "TRAIN", "OTHER"]
+              },
+              "startTime": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "endTime": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "amount": { "type": ["number", "null"], "minimum": 0 },
+              "currency": {
+                "type": ["string", "null"],
+                "pattern": "^[A-Z]{3}$"
+              },
+              "confirmed": { "type": "boolean" },
+              "summary": { "type": "string", "maxLength": 1000 }
+            }
+          }
+        },
+        "retrievedEvidence": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "toolResults": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["toolName", "status", "result"],
+            "properties": {
+              "toolName": { "$ref": "#/$defs/mcpToolName" },
+              "status": { "enum": ["SUCCEEDED", "UNAVAILABLE", "FAILED"] },
+              "result": { "type": "object" }
+            }
+          }
+        },
+        "agentResults": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["taskId", "agentName", "status", "result"],
+            "properties": {
+              "taskId": { "type": "string", "format": "uuid" },
+              "agentName": { "$ref": "#/$defs/agentName" },
+              "status": {
+                "enum": [
+                  "SUCCEEDED",
+                  "DEGRADED",
+                  "FAILED",
+                  "TIMEOUT",
+                  "SKIPPED"
+                ]
+              },
+              "result": { "type": "object" }
+            }
+          }
+        },
+        "planVersion": { "type": "integer", "minimum": 1 },
+        "tokenBudget": {
+          "type": "integer",
+          "minimum": 256,
+          "maximum": 200000
+        },
+        "privacyLabels": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["jsonPointer", "classification", "allowedAgents"],
+            "properties": {
+              "jsonPointer": { "type": "string" },
+              "classification": {
+                "enum": ["PUBLIC", "INTERNAL", "PERSONAL", "SENSITIVE"]
+              },
+              "allowedAgents": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "$ref": "#/$defs/agentName" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "agentName": {
+      "enum": [
+        "RequirementAgent",
+        "ResearchAgent",
+        "TransportAgent",
+        "AccommodationAgent",
+        "RecommendationAgent",
+        "BudgetAgent",
+        "ReviewAgent",
+        "CoordinatorAgent"
+      ]
+    },
+    "mcpToolName": {
+      "enum": [
+        "place_search",
+        "weather_query",
+        "route_calculate",
+        "exchange_rate",
+        "opening_hours",
+        "booking_parse",
+        "budget_validate",
+        "itinerary_store"
+      ]
+    },
+    "inputEnvelope": {
+      "type": "object",
+      "required": ["taskId", "context"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "#/$defs/contextEnvelope" }
+      }
+    },
+    "resultEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "taskId",
+        "agentName",
+        "status",
+        "result",
+        "evidence",
+        "warnings",
+        "traceId"
+      ],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "agentName": { "$ref": "#/$defs/agentName" },
+        "status": {
+          "enum": ["SUCCEEDED", "DEGRADED", "FAILED", "TIMEOUT", "SKIPPED"]
+        },
+        "result": { "type": "object" },
+        "evidence": {
+          "type": "array",
+          "maxItems": 200,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "warnings": {
+          "type": "array",
+          "maxItems": 100,
+          "items": { "$ref": "#/$defs/warning" }
+        },
+        "traceId": { "type": "string", "pattern": "^[0-9a-f]{32}$" }
+      }
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tripagent.example/schemas/agents/recommendation-agent.schema.json",
+  "title": "RecommendationAgent Contract",
+  "x-agent-card": {
+    "name": "RecommendationAgent",
+    "description": "Recommends attractions and dining options backed by evidence.",
+    "version": "1.0.0",
+    "skills": [
+      "place_search",
+      "opening_hours",
+      "route_calculate",
+      "weather_query"
+    ],
+    "timeoutMs": 35000,
+    "retry": { "maxAttempts": 3, "initialBackoffMs": 300 },
+    "errorCodes": [
+      "RECOMMENDATION_INPUT_INVALID",
+      "RECOMMENDATION_OUTPUT_INVALID",
+      "RECOMMENDATION_EVIDENCE_INSUFFICIENT",
+      "RECOMMENDATION_TIMEOUT"
+    ],
+    "allowDegraded": true,
+    "promptTemplateVersion": "recommendation-v1.0.0"
+  },
+  "$defs": {
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["taskId", "context", "city", "candidateAreas"],
+      "properties": {
+        "taskId": { "type": "string", "format": "uuid" },
+        "context": { "$ref": "common.schema.json#/$defs/contextEnvelope" },
+        "city": { "type": "string", "minLength": 1 },
+        "candidateAreas": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recommendations", "evidenceInsufficient"],
+      "properties": {
+        "recommendations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["itemId", "type", "name", "area", "estimatedCost"],
+            "properties": {
+              "itemId": { "type": "string" },
+              "type": { "enum": ["ATTRACTION", "RESTAURANT"] },
+              "name": { "type": "string" },
+              "area": { "type": "string" },
+              "estimatedCost": {
+                "$ref": "common.schema.json#/$defs/money"
+              }
+            }
+          }
+        },
+        "evidenceInsufficient": { "type": "boolean" }
+      }
+    },
+    "output": {
+      "allOf": [
+        { "$ref": "common.schema.json#/$defs/resultEnvelope" },
+        {
+          "properties": {
+            "agentName": { "const": "RecommendationAgent" },
+            "result": { "$ref": "#/$defs/result" }
+          }
+        }
+      ]
+    }
+  }
+}

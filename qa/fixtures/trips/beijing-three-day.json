@@ -1,0 +1,49 @@
+{
+  "trip": {
+    "userId": "10000000-0000-0000-0000-000000000101",
+    "title": "合成数据-北京三日验收行程",
+    "timeZone": "Asia/Shanghai"
+  },
+  "requirement": {
+    "origin": {
+      "name": "上海"
+    },
+    "destinations": [
+      {
+        "name": "北京"
+      }
+    ],
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-03",
+    "travelers": [
+      {
+        "travelerId": "20000000-0000-0000-0000-000000000101",
+        "displayName": "合成旅行者一",
+        "type": "ADULT",
+        "accessibilityNeeds": []
+      },
+      {
+        "travelerId": "20000000-0000-0000-0000-000000000102",
+        "displayName": "合成旅行者二",
+        "type": "ADULT",
+        "accessibilityNeeds": [
+          "减少连续步行"
+        ]
+      }
+    ],
+    "totalBudget": 6000,
+    "currency": "CNY",
+    "interests": [
+      "历史文化",
+      "本地餐饮"
+    ],
+    "pace": "BALANCED",
+    "mustVisit": [
+      "故宫博物院"
+    ],
+    "avoid": [
+      "凌晨出发"
+    ],
+    "freeTextConstraints": "使用合成偏好，保留充足换乘时间。"
+  }
+}

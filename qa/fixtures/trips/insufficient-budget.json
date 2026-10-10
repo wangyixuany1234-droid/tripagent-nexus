@@ -1,0 +1,50 @@
+{
+  "trip": {
+    "userId": "10000000-0000-0000-0000-000000000301",
+    "title": "合成数据-预算不足行程",
+    "timeZone": "Asia/Shanghai"
+  },
+  "requirement": {
+    "origin": {
+      "name": "广州"
+    },
+    "destinations": [
+      {
+        "name": "北京"
+      }
+    ],
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-03",
+    "travelers": [
+      {
+        "travelerId": "20000000-0000-0000-0000-000000000301",
+        "displayName": "合成旅行者",
+        "type": "ADULT",
+        "accessibilityNeeds": []
+      },
+      {
+        "travelerId": "20000000-0000-0000-0000-000000000302",
+        "displayName": "合成旅行者二",
+        "type": "ADULT",
+        "accessibilityNeeds": []
+      }
+    ],
+    "totalBudget": 300,
+    "currency": "CNY",
+    "interests": [
+      "历史文化",
+      "本地餐饮"
+    ],
+    "pace": "BALANCED",
+    "mustVisit": [
+      "故宫博物院",
+      "八达岭长城"
+    ],
+    "avoid": [],
+    "freeTextConstraints": "总预算故意低于交通、住宿和门票的合成最低成本。"
+  },
+  "expected": {
+    "accepted": true,
+    "conflictCode": "BUDGET_INSUFFICIENT"
+  }
+}

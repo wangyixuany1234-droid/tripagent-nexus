@@ -1,0 +1,19 @@
+{
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "urlPath": "/tools/weather"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "providerMode": "MOCK",
+      "city": "Beijing",
+      "condition": "clear",
+      "temperatureCelsius": 22
+    }
+  }
+}

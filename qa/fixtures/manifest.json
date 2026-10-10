@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "randomSeed": 20260908,
+  "classification": "synthetic",
+  "fixtures": [
+    {
+      "id": "trip-beijing-three-day",
+      "category": "trip",
+      "scenario": "normal",
+      "path": "trips/beijing-three-day.json"
+    },
+    {
+      "id": "trip-date-conflict",
+      "category": "trip",
+      "scenario": "date-conflict",
+      "path": "trips/date-conflict.json"
+    },
+    {
+      "id": "trip-insufficient-budget",
+      "category": "trip",
+      "scenario": "insufficient-budget",
+      "path": "trips/insufficient-budget.json"
+    },
+    {
+      "id": "ocr-hotel",
+      "category": "document",
+      "scenario": "hotel",
+      "path": "documents/hotel-confirmation.png"
+    },
+    {
+      "id": "ocr-flight",
+      "category": "document",
+      "scenario": "flight",
+      "path": "documents/flight-confirmation.jpg"
+    },
+    {
+      "id": "ocr-ticket",
+      "category": "document",
+      "scenario": "ticket",
+      "path": "documents/attraction-ticket.webp"
+    },
+    {
+      "id": "ocr-low-confidence",
+      "category": "document",
+      "scenario": "low-confidence",
+      "path": "documents/low-confidence.png"
+    },
+    {
+      "id": "ocr-duplicate-order",
+      "category": "document",
+      "scenario": "duplicate-order",
+      "path": "documents/duplicate-orders.pdf"
+    },
+    {
+      "id": "upload-invalid-image",
+      "category": "document",
+      "scenario": "invalid-magic",
+      "path": "documents/anomalous-invalid-image.jpg"
+    },
+    {
+      "id": "retrieval-public-knowledge",
+      "category": "retrieval",
+      "scenario": "public-knowledge",
+      "path": "retrieval/public-knowledge.json"
+    },
+    {
+      "id": "memory-user-a",
+      "category": "retrieval",
+      "scenario": "isolated-user-memory",
+      "path": "retrieval/memory-user-a.json"
+    },
+    {
+      "id": "memory-user-b",
+      "category": "retrieval",
+      "scenario": "isolated-user-memory",
+      "path": "retrieval/memory-user-b.json"
+    },
+    {
+      "id": "evaluation-stage10-v1",
+      "category": "evaluation",
+      "scenario": "intelligence-quality-baseline",
+      "path": "evaluation/stage10-v1.json"
+    },
+    {
+      "id": "security-adversarial-inputs",
+      "category": "security",
+      "scenario": "malicious-input",
+      "path": "security/adversarial-inputs.json"
+    }
+  ]
+}

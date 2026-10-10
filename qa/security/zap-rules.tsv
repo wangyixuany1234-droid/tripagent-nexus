@@ -1,0 +1,13 @@
+# rule_id	action	reason
+10010	IGNORE	本地测试环境允许非生产 Cookie 行为
+10015	FAIL	禁止不完整或错误的缓存控制
+10020	FAIL	禁止缺少 X-Frame-Options 或 frame-ancestors
+10021	FAIL	禁止缺少 X-Content-Type-Options
+10038	FAIL	禁止缺少 Content-Security-Policy
+10055	FAIL	禁止宽松 CORS
+10096	FAIL	禁止时间戳泄露
+10202	FAIL	禁止敏感信息泄露
+90019	FAIL	禁止服务端代码注入
+90020	FAIL	禁止远程命令执行
+90022	FAIL	禁止应用错误信息泄露
+90033	FAIL	禁止 Loosely Scoped Cookie

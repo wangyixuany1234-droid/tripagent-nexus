@@ -1,0 +1,11 @@
+title = "Stage 8 report scan with exact synthetic fixture disposition"
+
+[extend]
+path = "qa/security/gitleaks-artifacts.toml"
+
+[[allowlists]]
+description = "Exact local synthetic service fixture echoed by failed tests, reports only"
+condition = "AND"
+paths = ['''(^|/)output/test-results/[^/]+/(logs/[^/]+\.log|junit/[^/]+\.xml)$''']
+regexTarget = "match"
+regexes = ['''(?i)authorization["']?\s*[:=]\s*["']?bearer\s+test-service-token$''']

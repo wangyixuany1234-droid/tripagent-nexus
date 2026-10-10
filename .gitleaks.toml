@@ -1,0 +1,59 @@
+title = "TripAgent Nexus secret scanning"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Fixed local and test-only service tokens"
+regexTarget = "secret"
+regexes = [
+  '''tripagent-dev-service-token''',
+  '''test-service-token''',
+  '''synthetic-bearer-value''',
+]
+
+[[allowlists]]
+description = "Public request idempotency keys are replay identifiers, not credentials"
+regexTarget = "match"
+regexes = [
+  '''(?i)idempotency-key["']?[\s,:"]{1,8}[a-z0-9][a-z0-9._:-]{7,}''',
+  '''(?i)traceId["']?\s*[:=]\s*[0-9a-f]{16,32}''',
+]
+
+[[allowlists]]
+description = "Generated build artifacts and installed dependencies"
+paths = [
+  '''(^|/)target/''',
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)dist/''',
+  '''(^|/)\.runtime/''',
+  '''(^|/)qa/reports/''',
+  '''(^|/)output/test-results/''',
+]
+
+[[allowlists]]
+description = "Gitignored local environment files (only .env.example is committed; real secrets are never committed)"
+paths = [
+  '''(^|/)\.env$''',
+  '''(^|/)\.env\.[^/]+$''',
+]
+
+[[rules]]
+id = "deepseek-api-key"
+description = "DeepSeek API key"
+regex = '''(?i)(?:sk|deepseek)-[A-Za-z0-9][A-Za-z0-9_-]{20,}'''
+keywords = ["sk-", "deepseek-"]
+tags = ["key", "DEEPSEEK"]
+
+[[rules]]
+id = "authorization-bearer-token"
+description = "Hard-coded bearer token"
+regex = '''(?i)authorization["']?\s*[:=]\s*["']?bearer\s+[A-Za-z0-9._~+/=-]{16,}'''
+keywords = ["authorization", "bearer"]
+tags = ["token", "Authorization"]
+
+[[rules.allowlists]]
+description = "Documented fixed local development service token"
+regexTarget = "match"
+regexes = ['''(?i)authorization["']?\s*[:=]\s*["']?bearer\s+tripagent-dev-service-token''']

@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>TripAgent Nexus k6 race</title>
+  <style>
+    body { margin: 0; color: #17202a; background: #f7f8fa; font: 14px/1.5 system-ui, sans-serif; }
+    main { width: min(1180px, calc(100% - 40px)); margin: 32px auto; }
+    h1 { margin: 0 0 8px; font-size: 28px; }
+    p { margin: 0 0 24px; color: #52606d; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { padding: 10px 12px; border: 1px solid #d9e0e7; text-align: right; }
+    th:first-child, td:first-child { text-align: left; }
+    th { background: #eef2f5; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>TripAgent Nexus k6 race</h1>
+    <p>仅包含聚合指标，不包含请求正文、凭据或用户数据。</p>
+    <table>
+      <thead>
+        <tr>
+          <th>指标</th>
+          <th>计数/比率</th>
+          <th>p50</th>
+          <th>p90</th>
+          <th>p95</th>
+          <th>p99</th>
+          <th>门槛</th>
+        </tr>
+      </thead>
+      <tbody><tr>
+        <td>async_completion_duration</td>
+        <td>-</td>
+        <td>60240</td>
+        <td>60240</td>
+        <td>60240</td>
+        <td>60240</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>async_submit_duration</td>
+        <td>-</td>
+        <td>1199.185</td>
+        <td>1199.185</td>
+        <td>1199.185</td>
+        <td>1199.185</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>async_submit_errors</td>
+        <td>0</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>business_errors</td>
+        <td>0</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>PASS</td>
+      </tr>
+<tr>
+        <td>capacity_latency_vus_001_025</td>
+        <td>-</td>
+        <td>292.453</td>
+        <td>5736.250</td>
+        <td>7088.941</td>
+        <td>7394.468</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>checks</td>
+        <td>1</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>data_received</td>
+        <td>106715</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>data_sent</td>
+        <td>20454</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>duplicate_business_resources</td>
+        <td>0</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_req_blocked</td>
+        <td>-</td>
+        <td>0.008</td>
+        <td>0.771</td>
+        <td>1.007</td>
+        <td>2.660</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_req_connecting</td>
+        <td>-</td>
+        <td>0</td>
+        <td>0.673</td>
+        <td>0.837</td>
+        <td>2.046</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_req_duration</td>
+        <td>-</td>
+        <td>286.592</td>
+        <td>5717.746</td>
+        <td>7085.010</td>
+        <td>7394.038</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_req_failed</td>
+        <td>0</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>PASS</td>
+      </tr>
+<tr>
+        <td>http_req_receiving</td>
+        <td>-</td>
+        <td>12.368</td>
+        <td>51.104</td>
+        <td>67.834</td>
+        <td>118.579</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_req_sending</td>
+        <td>-</td>
+        <td>0.023</td>
+        <td>0.093</td>
+        <td>0.173</td>
+        <td>0.280</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_req_tls_handshaking</td>
+        <td>-</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>0</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_req_waiting</td>
+        <td>-</td>
+        <td>267.981</td>
+        <td>5642.087</td>
+        <td>6981.194</td>
+        <td>7353.190</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>http_reqs</td>
+        <td>127</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>iteration_duration</td>
+        <td>-</td>
+        <td>6344.932</td>
+        <td>7368.959</td>
+        <td>7410.685</td>
+        <td>7445.014</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>iterations</td>
+        <td>20</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>optimistic_lock_conflicts</td>
+        <td>4</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>race_rejected_writes</td>
+        <td>19</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>PASS</td>
+      </tr>
+<tr>
+        <td>race_successful_writes</td>
+        <td>1</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>PASS</td>
+      </tr>
+<tr>
+        <td>sync_duration</td>
+        <td>-</td>
+        <td>236.414</td>
+        <td>668.856</td>
+        <td>839.967</td>
+        <td>1091.180</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>sync_errors</td>
+        <td>0</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>task_permanent_stuck</td>
+        <td>0</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>vus</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>vus_max</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>write_duration</td>
+        <td>-</td>
+        <td>6190.587</td>
+        <td>7356.318</td>
+        <td>7403.074</td>
+        <td>7440.082</td>
+        <td>-</td>
+      </tr>
+<tr>
+        <td>write_errors</td>
+        <td>0</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+        <td>-</td>
+      </tr></tbody>
+    </table>
+  </main>
+</body>
+</html>
