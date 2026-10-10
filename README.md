@@ -5,7 +5,7 @@ Java 21、Spring Boot 3.5 和 Spring AI，AI/OCR/检索服务采用 Python 3.12
 与 FastAPI，持久化和消息基础设施包括 PostgreSQL、Redis、Kafka、Neo4j
 与 LanceDB。
 
-## 当前状态
+## 项目功能介绍
 
 平台核心业务闭环已完整实现：旅行需求建模与可恢复草稿、订单文档
 （PNG/JPEG/WEBP/PDF）安全检查与 OCR 解析、人工字段复核、八个 Agent 协作的
@@ -13,27 +13,6 @@ Java 21、Spring Boot 3.5 和 Spring AI，AI/OCR/检索服务采用 Python 3.12
 费用操作人工确认、行程工作台、偏好与记忆管理、结构化反馈、OIDC 登录与资源
 归属授权、受控开发者追踪与系统状态页。公共 API v1 契约已冻结，前后端共用
 生成 SDK 与兼容性基线。
-
-最近一轮全量验证（2026-09-20 至 2026-09-28，Windows + Docker 本地环境）结果：
-
-- 安全扫描：Secret 扫描 0 泄露、SAST 0 findings；Trivy 依赖与两个服务镜像
-  扫描 Critical/High 均为 0，npm audit 仅剩 3 个 moderate。
-- 功能回归：Java 单元与集成、OpenAPI/AsyncAPI 契约一致性、FastAPI pytest、
-  前端 Vitest 全部通过；Playwright 端到端执行的 28 项全部通过、0 失败
-  （另 22 项需真实后端或性能环境，本轮未执行）。
-- 已修复缺陷：此前"过期会话重定向页缺少返回并重新登录入口、return path 保护
-  失败"已修复，并有专用回归测试覆盖。
-- 并发与故障：同资源 20 并发竞态测试符合预期（1 次成功写、19 次幂等或乐观锁
-  拒绝、0 重复资源、0 业务错误）；消息重试、死信与任务恢复混沌测试通过。
-- 性能：k6 Smoke 通过并产出完整资源与延迟指标；Load 完成约 143 req/s 实测并
-  产出指标，但部分阈值未达标，判级为未通过。
-- 前端稳定性：Mock 路由隔离矩阵通过（0 失败、0 环境阻塞），覆盖三浏览器、
-  六档视口与七种网络模式。
-
-以下仍为未完成的真实环境验收，其结论不得外推为生产可用：真实模型、真实 OCR
-与人工语义复核（质量阈值未定义）；真实 Prometheus / Alertmanager 小流量故障
-注入；最终数据一致性复验（需授权数据库）；负载阈值与前端覆盖率长期目标
-（当前行覆盖率约 46%）。
 
 ## 核心能力
 
@@ -261,7 +240,7 @@ Prometheus / Alertmanager 小流量故障注入未执行，该结果不替代真
 
 最终全量回归按 Secret Scan、SAST、依赖/镜像、单元、契约、集成、E2E、AI、
 安全、性能、负载、故障恢复和数据一致性顺序执行，证据统一保存于
-`output/test-results/<QA_RUN_ID>/`，最近一轮结论见上文"当前状态"。
+`output/test-results/<QA_RUN_ID>/`。
 
 统一阈值位于 `qa/config/thresholds.json`，合成数据清单位于
 `qa/fixtures/manifest.json`。JUnit XML、JSON、HTML、覆盖率、性能结果和脱敏日志
